@@ -61,6 +61,9 @@ def main() -> None:
     cached_blast_hits = namespace.get("cached_blast_hits")
     if cached_blast_hits is None or len(cached_blast_hits) != 10:
         raise AssertionError("Notebook did not parse the expected 10 cached BLAST-like XML hits")
+    for required_column in ["bit_score", "teaching_e_value"]:
+        if required_column not in cached_blast_hits.columns:
+            raise AssertionError(f"Notebook did not parse cached BLAST-like XML column: {required_column}")
 
     report = {
         "status": "passed",

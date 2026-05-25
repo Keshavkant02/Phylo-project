@@ -1000,6 +1000,8 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
                             "compared_bases": align_len,
                             "differences": align_len - identity,
                             "percent_identity_teaching_window": 100 * identity / align_len,
+                            "bit_score": float(hsp.findtext("Hsp_bit-score")),
+                            "teaching_e_value": hsp.findtext("Hsp_evalue"),
                         })
                 return pd.DataFrame(rows)
 
@@ -1126,6 +1128,8 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
             What would students normally wait for from BLAST?
 
             They would wait for a ranked hit table. For class, we cache that idea too. This table is computed from the same teaching marker window and lets students see the species-finding result before they build a tree.
+
+            The E-values and bit scores shown below come from the cached BLAST-like teaching XML. They are included so students can learn how ranked-hit evidence is read, but they are not live NCBI BLAST statistics.
             """
         ),
         code(
@@ -1143,9 +1147,18 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
             )
             assert xml_top == csv_top, f"Cached XML and CSV disagree: {xml_top} vs {csv_top}"
 
-            hit_view = cached_hits[cached_hits["rank"] <= 3].copy()
+            hit_view = (
+                cached_blast_hits[cached_blast_hits["rank"] <= 3]
+                .merge(
+                    cached_hits[["query_label", "rank", "fraction_different", "interpretation"]],
+                    on=["query_label", "rank"],
+                    how="left",
+                )
+                .copy()
+            )
             hit_view["percent_identity_teaching_window"] = hit_view["percent_identity_teaching_window"].map(lambda x: f"{float(x):.2f}")
             hit_view["fraction_different"] = hit_view["fraction_different"].map(lambda x: f"{float(x):.4f}")
+            hit_view["bit_score"] = hit_view["bit_score"].map(lambda x: f"{float(x):.1f}")
             wrapped_table(
                 hit_view[
                     [
@@ -1154,6 +1167,8 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
                         "reference_label",
                         "reference_accession",
                         "percent_identity_teaching_window",
+                        "bit_score",
+                        "teaching_e_value",
                         "interpretation",
                     ]
                 ],
@@ -1163,10 +1178,13 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
                     "reference_label",
                     "reference_accession",
                     "percent_identity_teaching_window",
+                    "bit_score",
+                    "teaching_e_value",
                     "interpretation",
                 ],
             )
             print("Cached BLAST-like XML agrees with the cached hit CSV for the top hit of each query.")
+            print("E-values and bit scores here are cached teaching values, not fresh live-BLAST statistics.")
             """
         ),
         md(

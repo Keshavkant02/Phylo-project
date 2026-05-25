@@ -47,3 +47,11 @@ Expected closest-reference calls:
 - `Soil_ASV_B -> Rhizobium_leguminosarum_IAM12609`
 
 See `SCIENTIFIC_QA_REPORT.md` for the literature-backed go/no-go review, limitations, and source links.
+
+## Teaching Printouts
+
+- `SOIL_16S_TEACHING_SYNTHESIS_AND_NEXT_DATASET_PLAN.md`: instructor-facing explanation of how the cache was built, why this dataset was chosen, E-value caveats, and the next real-soil dataset plan.
+- `soil_16s_tree_reading_printout.pdf`: printable student tree-reading activity.
+- `soil_16s_tree_reading_answer_key.md`: instructor answer key.
+
+The printout is original and uses this repository's soil bacteria/ASV examples. It is inspired by Baum-style tree-thinking goals but does not copy the Baum quiz pages.
