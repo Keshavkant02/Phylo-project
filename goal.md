@@ -108,6 +108,7 @@ Students should finish with a claim like:
 - Notebook can load from GitHub raw cache or embedded fallback.
 - Notebook avoids live BLAST/NCBI in the default path.
 - Notebook includes UPGMA and neighbor-joining trees.
+- Notebook includes a simple bootstrap-support teaching plot for the small 16S tree.
 - Notebook explains that IQ-TREE is optional and model-based.
 - Notebook includes real Atacama soil ASV statistics with adjusted q-values.
 - Notebook code cells parse as Python.

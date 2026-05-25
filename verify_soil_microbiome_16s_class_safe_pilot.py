@@ -43,6 +43,7 @@ def main() -> None:
         OUTPUT_DIR / "soil_16s_upgma_tree.newick",
         OUTPUT_DIR / "soil_16s_neighbor_joining_tree.newick",
         OUTPUT_DIR / "soil_16s_metadata_used.csv",
+        OUTPUT_DIR / "soil_16s_bootstrap_support.csv",
         OUTPUT_DIR / "atacama_top_asv_stats.csv",
         OUTPUT_DIR / "atacama_alpha_diversity_stats.csv",
         OUTPUT_DIR / "atacama_sample_metadata_mini.csv",
@@ -69,6 +70,15 @@ def main() -> None:
     for required_column in ["bit_score", "teaching_e_value"]:
         if required_column not in cached_blast_hits.columns:
             raise AssertionError(f"Notebook did not parse cached BLAST-like XML column: {required_column}")
+
+    bootstrap_support = namespace.get("bootstrap_support")
+    if bootstrap_support is None or len(bootstrap_support) == 0:
+        raise AssertionError("Notebook did not create bootstrap-support table")
+    if "bootstrap_support_percent" not in bootstrap_support.columns:
+        raise AssertionError("Notebook bootstrap table does not include support percentages")
+    support_values = [float(value) for value in bootstrap_support["bootstrap_support_percent"]]
+    if not all(math.isfinite(value) and 0 <= value <= 100 for value in support_values):
+        raise AssertionError("Bootstrap support values must be percentages between 0 and 100")
 
     atacama_stats = namespace.get("atacama_stats")
     if atacama_stats is None or len(atacama_stats) != 12:
@@ -100,6 +110,7 @@ def main() -> None:
         "expected_outputs": [str(path.relative_to(ROOT)) for path in expected_outputs],
         "closest": closest_map,
         "cached_blast_xml_hits": int(len(cached_blast_hits)),
+        "bootstrap_clades": int(len(bootstrap_support)),
         "atacama_asv_stat_rows": int(len(atacama_stats)),
         "atacama_alpha_stat_rows": int(len(atacama_alpha_stats)),
     }

@@ -17,6 +17,7 @@ This checklist applies to `soil_microbiome_16s_class_safe_colab.ipynb`.
 - Alignment view: base colors encode A/C/G/T/N/gap and include a compact legend; variable columns are small ticks.
 - Distance matrix: colorbar says exactly what the values mean.
 - Tree plots: branch length axis remains visible; unnecessary plot borders are removed.
+- Bootstrap plot: support is shown on a 0-100% axis and is explicitly separated from q-values.
 
 ## Eraser Test
 

@@ -18,16 +18,17 @@ Local notebook execution passed after rebuilding the notebook:
 
 Observed validation result:
 
-- 21 code cells executed.
+- 22 code cells executed.
 - 5 reference 16S sequences loaded.
 - 2 teaching ASV/query reads loaded.
 - 10 cached BLAST-like XML hit rows parsed.
 - 61 Atacama soil sample metadata rows loaded.
 - 12 Atacama ASV statistic rows loaded.
 - 3 Atacama alpha-diversity statistic rows loaded.
+- 5 bootstrap-supported clades summarized from resampled alignment columns.
 - `Soil_ASV_A -> Bacillus_subtilis_168`.
 - `Soil_ASV_B -> Rhizobium_leguminosarum_IAM12609`.
-- Distance matrix, closest-reference report, UPGMA Newick tree, NJ Newick tree, metadata export, Atacama ASV stats, Atacama alpha-diversity stats, Atacama metadata, and Atacama relative-abundance exports were written.
+- Distance matrix, closest-reference report, UPGMA Newick tree, NJ Newick tree, bootstrap support table, metadata export, Atacama ASV stats, Atacama alpha-diversity stats, Atacama metadata, and Atacama relative-abundance exports were written.
 
 Raw GitHub cache check passed for the already-published cache URL:
 
@@ -64,6 +65,7 @@ Remaining deliberate simplifications:
 - The star alignment is a class-safe teaching approximation. It is useful for a small reference/query set but should be replaced by MAFFT or another multiple aligner for project-grade analysis.
 - The toy abundance table is for narrative context only. Real abundance/statistics teaching now uses the cached Atacama mini-dataset.
 - The Atacama q-values are Benjamini-Hochberg adjusted association-test p-values. They are not bootstrap values and not phylogenetic branch support.
+- The bootstrap-support table is a simple teaching resampling summary for the small UPGMA tree, not a publication-grade phylogenetic support analysis.
 - No 3D effects are used in scientific figures because they would distort distances and reduce graphical integrity.
 
 ## Visualization Review

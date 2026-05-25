@@ -744,6 +744,7 @@ This checklist applies to `soil_microbiome_16s_class_safe_colab.ipynb`.
 - Alignment view: base colors encode A/C/G/T/N/gap and include a compact legend; variable columns are small ticks.
 - Distance matrix: colorbar says exactly what the values mean.
 - Tree plots: branch length axis remains visible; unnecessary plot borders are removed.
+- Bootstrap plot: support is shown on a 0-100% axis and is explicitly separated from q-values.
 
 ## Eraser Test
 
@@ -931,6 +932,7 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
             MARKER_WINDOW_BASES = 520 #@param {type:"slider", min:200, max:560, step:20}
             ALIGNMENT_START = 130 #@param {type:"slider", min:0, max:420, step:10}
             ALIGNMENT_WIDTH = 70 #@param {type:"slider", min:30, max:100, step:10}
+            BOOTSTRAP_REPLICATES = 100 #@param {type:"slider", min:50, max:300, step:50}
             print("Controls set. The default path uses the embedded cache, so class runs do not depend on live BLAST.")
             """
         ),
@@ -1848,7 +1850,108 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
         ),
         md(
             """
-            ## 10. Report the result carefully
+            ## 10. Read the tree as relationships, not page geometry
+
+            Use the printout questions with this section. The important move is to read from nodes, not from left-right tip order.
+
+            A sister relationship means two tips or clades share a more recent common ancestor with each other than with the other tips. Rotating a branch around a node changes the drawing, not the relationship.
+            """
+        ),
+        code(
+            """
+            #@title Bootstrap support for the small teaching tree
+            def distance_frame_from_sequences(sequence_by_label, ordered_labels):
+                frame = pd.DataFrame(index=ordered_labels, columns=ordered_labels, dtype=float)
+                for left in ordered_labels:
+                    for right in ordered_labels:
+                        frame.loc[left, right] = fraction_different(
+                            sequence_by_label[left],
+                            sequence_by_label[right],
+                        )
+                return frame
+
+            def internal_clade_sets(tree):
+                all_tips = frozenset(tip.name for tip in tree.get_terminals())
+                clades = []
+                for clade in tree.get_nonterminals(order="preorder"):
+                    tips = frozenset(tip.name for tip in clade.get_terminals())
+                    if 1 < len(tips) < len(all_tips):
+                        clades.append(tips)
+                return clades
+
+            def clade_label(tips):
+                return " + ".join(sorted(tips))
+
+            original_clades = internal_clade_sets(upgma_tree)
+            support_counts = {clade: 0 for clade in original_clades}
+            rng = np.random.default_rng(20260525)
+            width = min(len(aligned_windows[label]) for label in labels)
+            arrays = {
+                label: np.array(list(aligned_windows[label][:width]))
+                for label in labels
+            }
+
+            for _ in range(int(BOOTSTRAP_REPLICATES)):
+                sampled_columns = rng.integers(0, width, size=width)
+                sampled_sequences = {
+                    label: "".join(arrays[label][sampled_columns])
+                    for label in labels
+                }
+                sampled_dist = distance_frame_from_sequences(sampled_sequences, labels)
+                sampled_tree = constructor.upgma(as_distance_matrix(sampled_dist))
+                sampled_clades = set(internal_clade_sets(sampled_tree))
+                for clade in original_clades:
+                    if clade in sampled_clades:
+                        support_counts[clade] += 1
+
+            bootstrap_support = pd.DataFrame([
+                {
+                    "clade": clade_label(clade),
+                    "tip_count": len(clade),
+                    "bootstrap_replicates": int(BOOTSTRAP_REPLICATES),
+                    "bootstrap_support_percent": 100 * support_counts[clade] / int(BOOTSTRAP_REPLICATES),
+                }
+                for clade in original_clades
+            ]).sort_values("bootstrap_support_percent", ascending=True)
+            bootstrap_support["clade_id"] = [
+                f"Clade {i}"
+                for i in range(1, len(bootstrap_support) + 1)
+            ]
+
+            fig, ax = plt.subplots(figsize=(9, max(3.2, 0.45 * len(bootstrap_support) + 1.5)))
+            colors = [
+                OKABE_ITO["bluish_green"] if value >= 70 else "#9E9E9E"
+                for value in bootstrap_support["bootstrap_support_percent"]
+            ]
+            ax.barh(
+                bootstrap_support["clade_id"],
+                bootstrap_support["bootstrap_support_percent"],
+                color=colors,
+                edgecolor="white",
+                linewidth=0.7,
+            )
+            ax.axvline(70, color="#555555", linewidth=1.0)
+            ax.set_xlim(0, 100)
+            ax.set_xlabel("bootstrap support (%) from resampled alignment columns")
+            ax.set_ylabel("")
+            ax.set_title("UPGMA clade support is a resampling summary, not an abundance p-value", loc="left", fontsize=12)
+            ax.spines[["top", "right"]].set_visible(False)
+            ax.grid(axis="x", color="#eeeeee", linewidth=0.8)
+            plt.tight_layout()
+            plt.show()
+
+            display(
+                bootstrap_support[
+                    ["clade_id", "clade", "tip_count", "bootstrap_replicates", "bootstrap_support_percent"]
+                ]
+                .sort_values("bootstrap_support_percent", ascending=False)
+                .round(2)
+            )
+            """
+        ),
+        md(
+            """
+            ## 11. Report the result carefully
 
             What exactly did we build?
 
@@ -1873,7 +1976,7 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
         ),
         md(
             """
-            ## 11. Optional: where IQ-TREE fits
+            ## 12. Optional: where IQ-TREE fits
 
             IQ-TREE is useful, but for a different teaching purpose.
 
@@ -1898,7 +2001,7 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
         ),
         md(
             """
-            ## 12. Replace the teaching cache later
+            ## 13. Replace the teaching cache later
 
             How does this become your real soil microbiome project?
 
@@ -1947,6 +2050,7 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
             Phylo.write(upgma_tree, output_dir / "soil_16s_upgma_tree.newick", "newick")
             Phylo.write(nj_tree, output_dir / "soil_16s_neighbor_joining_tree.newick", "newick")
             metadata.to_csv(output_dir / "soil_16s_metadata_used.csv", index=False)
+            bootstrap_support.to_csv(output_dir / "soil_16s_bootstrap_support.csv", index=False)
             atacama_stats.to_csv(output_dir / "atacama_top_asv_stats.csv", index=False)
             atacama_alpha_stats.to_csv(output_dir / "atacama_alpha_diversity_stats.csv", index=False)
             atacama_metadata.to_csv(output_dir / "atacama_sample_metadata_mini.csv", index=False)
@@ -1960,6 +2064,7 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
 
             - Which query has the closest reference in the cached set?
             - Which references cluster near each other?
+            - Which clade has the strongest bootstrap support in this small teaching tree?
             - Does a high 16S similarity prove exact species identity?
             - Which Atacama ASV has the strongest humidity association after BH correction?
             - Why are abundance q-values different from tree branch support values?

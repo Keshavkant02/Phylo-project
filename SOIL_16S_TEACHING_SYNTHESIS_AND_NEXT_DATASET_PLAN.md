@@ -131,7 +131,7 @@ For tree questions:
 - Do not call branch lengths "p-values."
 - A distance-based phylogram shows sequence distance as branch length.
 - Use bootstrap support, not p-values, to show support for branches.
-- For a simple Colab version, bootstrap by resampling alignment columns 100-500 times, rebuilding a tree, and counting how often a clade appears.
+- The current Colab includes a simple bootstrap teaching step: it resamples alignment columns, rebuilds UPGMA trees, and counts how often each original clade reappears.
 
 Recommended student language:
 
@@ -263,6 +263,7 @@ Students use:
 - alignment view,
 - distance matrix,
 - UPGMA and NJ trees.
+- bootstrap support for the small UPGMA teaching tree.
 
 Activity:
 
@@ -291,10 +292,9 @@ Students write:
 
 ## Remaining Next Implementation
 
-1. Add a bootstrap-support teaching plot for the small 16S tree.
-2. Add one short "read this tree" cell that directly references the printout concepts before students interpret the generated tree.
-3. Keep all heavy preprocessing outside the student Colab.
-4. Later option: replace teaching E-values with real pre-run BLAST XML if exact BLAST statistics are important for the class.
+1. Keep all heavy preprocessing outside the student Colab.
+2. Later option: replace teaching E-values with real pre-run BLAST XML if exact BLAST statistics are important for the class.
+3. Later option: add a small model-based IQ-TREE comparison if students are ready for maximum-likelihood trees.
 
 ## Sources Reviewed
 
