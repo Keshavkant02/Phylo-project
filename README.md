@@ -2,11 +2,15 @@
 
 Class-safe Colab workflow for a soil-microbiome-flavored introduction to 16S marker-gene phylogeny.
 
+This is a 16S marker/metabarcoding teaching pilot, not shotgun metagenomics and not exact species proof.
+
 ## Main Notebook
 
 - `soil_microbiome_16s_class_safe_colab.ipynb`
 
 Students can run the notebook top to bottom. The default mode uses an embedded cache, so live BLAST/NCBI calls are not required during class.
+
+The notebook now uses Biopython `PairwiseAligner` for the small browser-safe star alignment, then builds UPGMA and neighbor-joining trees from the same distance matrix.
 
 ## GitHub Cache URL
 
@@ -42,3 +46,4 @@ Expected closest-reference calls:
 - `Soil_ASV_A -> Bacillus_subtilis_168`
 - `Soil_ASV_B -> Rhizobium_leguminosarum_IAM12609`
 
+See `SCIENTIFIC_QA_REPORT.md` for the literature-backed go/no-go review, limitations, and source links.

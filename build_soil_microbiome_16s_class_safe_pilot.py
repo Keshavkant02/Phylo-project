@@ -5,7 +5,6 @@ import csv
 import json
 import math
 import textwrap
-import warnings
 from pathlib import Path
 from xml.sax.saxutils import escape as xml_escape
 
@@ -253,12 +252,51 @@ def mutate(seq: str, positions: list[int]) -> str:
     return "".join(chars)
 
 
-def star_align_to_reference(windows: dict[str, str], reference_label: str) -> dict[str, str]:
-    from Bio import BiopythonDeprecationWarning
+def global_align_pair(reference: str, sequence: str) -> tuple[str, str]:
+    from Bio.Align import PairwiseAligner
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", BiopythonDeprecationWarning)
-        from Bio import pairwise2
+    aligner = PairwiseAligner(
+        mode="global",
+        match_score=2,
+        mismatch_score=-1,
+        open_gap_score=-5,
+        extend_gap_score=-0.5,
+    )
+    alignment = aligner.align(reference, sequence)[0]
+    ref_blocks, seq_blocks = alignment.aligned
+    ref_parts: list[str] = []
+    seq_parts: list[str] = []
+    ref_pos = 0
+    seq_pos = 0
+
+    for (ref_start, ref_end), (seq_start, seq_end) in zip(ref_blocks, seq_blocks):
+        if ref_start > ref_pos:
+            ref_parts.append(reference[ref_pos:ref_start])
+            seq_parts.append("-" * (ref_start - ref_pos))
+        if seq_start > seq_pos:
+            ref_parts.append("-" * (seq_start - seq_pos))
+            seq_parts.append(sequence[seq_pos:seq_start])
+
+        ref_parts.append(reference[ref_start:ref_end])
+        seq_parts.append(sequence[seq_start:seq_end])
+        ref_pos = int(ref_end)
+        seq_pos = int(seq_end)
+
+    if ref_pos < len(reference):
+        ref_parts.append(reference[ref_pos:])
+        seq_parts.append("-" * (len(reference) - ref_pos))
+    if seq_pos < len(sequence):
+        ref_parts.append("-" * (len(sequence) - seq_pos))
+        seq_parts.append(sequence[seq_pos:])
+
+    aligned_ref = "".join(ref_parts)
+    aligned_seq = "".join(seq_parts)
+    if len(aligned_ref) != len(aligned_seq):
+        raise ValueError("PairwiseAligner returned unequal reconstructed alignment lengths")
+    return aligned_ref, aligned_seq
+
+
+def star_align_to_reference(windows: dict[str, str], reference_label: str) -> dict[str, str]:
 
     reference = windows[reference_label]
     ref_len = len(reference)
@@ -270,16 +308,7 @@ def star_align_to_reference(windows: dict[str, str], reference_label: str) -> di
         if label == reference_label:
             aligned_ref, aligned_seq = reference, sequence
         else:
-            alignment = pairwise2.align.globalms(
-                reference,
-                sequence,
-                2,
-                -1,
-                -5,
-                -0.5,
-                one_alignment_only=True,
-            )[0]
-            aligned_ref, aligned_seq = alignment.seqA, alignment.seqB
+            aligned_ref, aligned_seq = global_align_pair(reference, sequence)
 
         bases = ["-"] * ref_len
         insertions: dict[int, list[str]] = {}
@@ -510,6 +539,8 @@ def make_cache_files() -> dict[str, str]:
 
         The default classroom workflow should load these files instead of calling live BLAST, Entrez, SILVA, or other web services during class.
 
+        This cache supports a 16S marker/metabarcoding teaching workflow, not a shotgun metagenomics workflow.
+
         One-command Colab pattern after this folder is pushed to GitHub:
 
         ```python
@@ -656,7 +687,7 @@ This checklist applies to `soil_microbiome_16s_class_safe_colab.ipynb`.
 
 - Workflow map: labels sit above the marks; connectors are thin gray lines.
 - Abundance plot: stacked bars encode the toy count table; no 3D effects.
-- Alignment view: base colors encode A/C/G/T/N only; variable columns are small ticks.
+- Alignment view: base colors encode A/C/G/T/N/gap and include a compact legend; variable columns are small ticks.
 - Distance matrix: colorbar says exactly what the values mean.
 - Tree plots: branch length axis remains visible; unnecessary plot borders are removed.
 
@@ -813,6 +844,8 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
             6. report a careful closest-reference claim.
 
             A tree is a hypothesis from evidence. In this notebook the evidence is one short 16S marker window, so the final claim must stay cautious.
+
+            This is a browser-only 16S marker/metabarcoding pilot. It is not a shotgun metagenomics pipeline and it does not prove exact species identity.
             """
         ),
         code(
@@ -851,7 +884,6 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
             import json
             import math
             import urllib.request
-            import warnings
             import xml.etree.ElementTree as ET
             from io import StringIO
             from pathlib import Path
@@ -862,11 +894,9 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
             import seaborn as sns
             from IPython.display import HTML, display
 
-            from Bio import BiopythonDeprecationWarning, Phylo, SeqIO
+            from Bio import Phylo, SeqIO
+            from Bio.Align import PairwiseAligner
             from Bio.Phylo.TreeConstruction import DistanceMatrix, DistanceTreeConstructor
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", BiopythonDeprecationWarning)
-                from Bio import pairwise2
 
             EMBEDDED_CACHE = {cache_literal}
 
@@ -1181,7 +1211,7 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
 
             How can we compare sequences fairly? First, we choose the same marker region.
 
-            This pilot trims each reference to a shared 16S starting anchor and then uses a small star alignment around one reference coordinate. That keeps the class path simple, but still makes the distance step depend on aligned columns rather than raw string positions.
+            This pilot trims each reference to a shared 16S starting anchor and then uses Biopython's `PairwiseAligner` to make a small star alignment around one reference coordinate. That keeps the class path simple, but still makes the distance step depend on aligned columns rather than raw string positions.
 
             In the later project notebook, this shortcut can be replaced by MAFFT on the team's cleaned reads and selected references.
             """
@@ -1208,6 +1238,48 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
                 else:
                     windows[record.id] = marker_window(seq, MARKER_WINDOW_BASES)
 
+            def global_align_pair(reference, sequence):
+                aligner = PairwiseAligner(
+                    mode="global",
+                    match_score=2,
+                    mismatch_score=-1,
+                    open_gap_score=-5,
+                    extend_gap_score=-0.5,
+                )
+                alignment = aligner.align(reference, sequence)[0]
+                ref_blocks, seq_blocks = alignment.aligned
+                ref_parts = []
+                seq_parts = []
+                ref_pos = 0
+                seq_pos = 0
+
+                for (ref_start, ref_end), (seq_start, seq_end) in zip(ref_blocks, seq_blocks):
+                    if ref_start > ref_pos:
+                        ref_parts.append(reference[ref_pos:ref_start])
+                        seq_parts.append("-" * (ref_start - ref_pos))
+                    if seq_start > seq_pos:
+                        ref_parts.append("-" * (seq_start - seq_pos))
+                        seq_parts.append(sequence[seq_pos:seq_start])
+
+                    ref_parts.append(reference[ref_start:ref_end])
+                    seq_parts.append(sequence[seq_start:seq_end])
+                    ref_pos = int(ref_end)
+                    seq_pos = int(seq_end)
+
+                if ref_pos < len(reference):
+                    ref_parts.append(reference[ref_pos:])
+                    seq_parts.append("-" * (len(reference) - ref_pos))
+                if seq_pos < len(sequence):
+                    ref_parts.append("-" * (len(sequence) - seq_pos))
+                    seq_parts.append(sequence[seq_pos:])
+
+                aligned_ref = "".join(ref_parts)
+                aligned_seq = "".join(seq_parts)
+                if len(aligned_ref) != len(aligned_seq):
+                    raise ValueError("PairwiseAligner returned unequal reconstructed alignment lengths")
+                return aligned_ref, aligned_seq
+
+
             def star_align_to_reference(windows, reference_label):
                 reference = windows[reference_label]
                 ref_len = len(reference)
@@ -1219,16 +1291,7 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
                     if label == reference_label:
                         aligned_ref, aligned_seq = reference, sequence
                     else:
-                        alignment = pairwise2.align.globalms(
-                            reference,
-                            sequence,
-                            2,
-                            -1,
-                            -5,
-                            -0.5,
-                            one_alignment_only=True,
-                        )[0]
-                        aligned_ref, aligned_seq = alignment.seqA, alignment.seqB
+                        aligned_ref, aligned_seq = global_align_pair(reference, sequence)
 
                     bases = ["-"] * ref_len
                     insertions = {}
@@ -1274,6 +1337,7 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
             """
             #@title Visualize a small alignment window
             from matplotlib.colors import ListedColormap
+            from matplotlib.patches import Patch
 
             def plot_alignment_window(windows, start=0, width=70):
                 labels = list(windows)
@@ -1285,7 +1349,7 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
                     for label in labels
                 ])
 
-                fig, ax = plt.subplots(figsize=(11, 3.8))
+                fig, ax = plt.subplots(figsize=(11, 4.1))
                 cmap = ListedColormap([BASE_COLORS[base] for base in bases])
                 ax.imshow(matrix, aspect="auto", interpolation="nearest", cmap=cmap, vmin=0, vmax=len(bases)-1)
                 ax.set_yticks(range(len(labels)))
@@ -1297,6 +1361,16 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
                 ax.tick_params(length=0)
                 for spine in ax.spines.values():
                     spine.set_visible(False)
+                legend_handles = [Patch(facecolor=BASE_COLORS[base], edgecolor="none", label=base) for base in bases]
+                ax.legend(
+                    handles=legend_handles,
+                    loc="upper center",
+                    bbox_to_anchor=(0.5, -0.2),
+                    ncol=len(bases),
+                    frameon=False,
+                    handlelength=1.0,
+                    columnspacing=1.0,
+                )
 
                 for x in range(matrix.shape[1]):
                     column = [windows[label][start + x] for label in labels if start + x < len(windows[label])]
@@ -1344,27 +1418,38 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
 
             query_labels = [record.id for record in queries]
             reference_labels = [record.id for record in references]
-            closest_rows = []
+            tree_top = {}
             for query in query_labels:
                 ranked = dist.loc[query, reference_labels].sort_values()
-                best_label = ranked.index[0]
-                best_distance = float(ranked.iloc[0])
-                closest_rows.append({
-                    "query": query,
-                    "closest_reference": best_label,
-                    "fraction_different": best_distance,
-                    "percent_similarity": 100 * (1 - best_distance),
-                })
-            closest = pd.DataFrame(closest_rows)
+                tree_top[query] = ranked.index[0]
             cached_top = (
                 cached_hits[cached_hits["rank"] == 1]
                 .set_index("query_label")["reference_label"]
                 .to_dict()
             )
-            computed_top = closest.set_index("query")["closest_reference"].to_dict()
-            assert computed_top == cached_top, f"Computed closest hits do not match cached table: {computed_top} vs {cached_top}"
-            display(closest.style.format({"fraction_different": "{:.4f}", "percent_similarity": "{:.2f}"}))
-            print("Computed closest-reference results match the cached hit table.")
+            assert tree_top == cached_top, f"Computed closest hits do not match cached table: {tree_top} vs {cached_top}"
+
+            closest = (
+                cached_hits[cached_hits["rank"] == 1]
+                .rename(columns={
+                    "query_label": "query",
+                    "reference_label": "closest_reference",
+                    "fraction_different": "cached_hit_fraction_different",
+                    "percent_identity_teaching_window": "percent_similarity",
+                })
+                [["query", "closest_reference", "cached_hit_fraction_different", "percent_similarity"]]
+                .copy()
+            )
+            closest["tree_distance_to_closest"] = [
+                float(dist.loc[row["query"], row["closest_reference"]])
+                for _, row in closest.iterrows()
+            ]
+            display(closest.style.format({
+                "cached_hit_fraction_different": "{:.4f}",
+                "percent_similarity": "{:.2f}",
+                "tree_distance_to_closest": "{:.4f}",
+            }))
+            print("Closest-reference labels match the cached hit table; identity percentages come from the cached direct-hit table.")
             """
         ),
         code(

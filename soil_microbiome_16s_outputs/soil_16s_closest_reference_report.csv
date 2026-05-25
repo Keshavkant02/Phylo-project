@@ -1,3 +1,3 @@
-query,closest_reference,fraction_different,percent_similarity
-Soil_ASV_A,Bacillus_subtilis_168,0.007692307692307693,99.23076923076923
-Soil_ASV_B,Rhizobium_leguminosarum_IAM12609,0.01764705882352941,98.23529411764706
+query,closest_reference,cached_hit_fraction_different,percent_similarity,tree_distance_to_closest
+Soil_ASV_A,Bacillus_subtilis_168,0.007692,99.231,0.007692307692307693
+Soil_ASV_B,Rhizobium_leguminosarum_IAM12609,0.005837,99.416,0.009746588693957114

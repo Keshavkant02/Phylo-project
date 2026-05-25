@@ -54,6 +54,7 @@ The notebook should try GitHub raw files when `USE_GITHUB_CACHE=True`, but it mu
 
 Use Biopython for the main class path:
 
+- `Bio.Align.PairwiseAligner` for the small browser-safe star alignment.
 - `DistanceTreeConstructor.upgma` for UPGMA.
 - `DistanceTreeConstructor.nj` for neighbor joining.
 - No external binary is needed for the basic class-safe tree.
@@ -108,4 +109,4 @@ Students should finish with a claim like:
 - Notebook code cells parse as Python.
 - Plotting code uses Okabe-Ito and viridis/cividis.
 - Claims are cautious about 16S species resolution.
-
+- Scientific QA report records evidence, literature support, limitations, and go/no-go verdict.

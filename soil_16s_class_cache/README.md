@@ -4,6 +4,8 @@ This folder is the class-safe data cache for `soil_microbiome_16s_class_safe_col
 
 The default classroom workflow should load these files instead of calling live BLAST, Entrez, SILVA, or other web services during class.
 
+This cache supports a 16S marker/metabarcoding teaching workflow, not a shotgun metagenomics workflow.
+
 One-command Colab pattern after this folder is pushed to GitHub:
 
 ```python

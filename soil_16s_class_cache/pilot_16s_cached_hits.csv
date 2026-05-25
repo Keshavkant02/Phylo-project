@@ -5,7 +5,7 @@ Soil_ASV_A,3,Rhizobium_leguminosarum_IAM12609,D14513.1,Rhizobium leguminosarum t
 Soil_ASV_A,4,Acidobacterium_capsulatum_ATCC51196,NR_074106.1,Acidobacterium capsulatum ATCC 51196,470,106,0.225532,77.447,precomputed class-safe teaching hit table,lower-ranked cached reference
 Soil_ASV_A,5,Pseudomonas_fluorescens_CCM2115,NR_115715.1,Pseudomonas fluorescens strain CCM 2115,503,119,0.236581,76.342,precomputed class-safe teaching hit table,lower-ranked cached reference
 Soil_ASV_B,1,Rhizobium_leguminosarum_IAM12609,D14513.1,Rhizobium leguminosarum type strain IAM 12609,514,3,0.005837,99.416,precomputed class-safe teaching hit table,closest cached reference
-Soil_ASV_B,2,Pseudomonas_fluorescens_CCM2115,NR_115715.1,Pseudomonas fluorescens strain CCM 2115,481,90,0.187110,81.289,precomputed class-safe teaching hit table,lower-ranked cached reference
-Soil_ASV_B,3,Streptomyces_coelicolor_rrnD,Y00411.1,Streptomyces coelicolor,511,102,0.199609,80.039,precomputed class-safe teaching hit table,lower-ranked cached reference
+Soil_ASV_B,2,Pseudomonas_fluorescens_CCM2115,NR_115715.1,Pseudomonas fluorescens strain CCM 2115,480,90,0.187500,81.250,precomputed class-safe teaching hit table,lower-ranked cached reference
+Soil_ASV_B,3,Streptomyces_coelicolor_rrnD,Y00411.1,Streptomyces coelicolor,513,102,0.198830,80.117,precomputed class-safe teaching hit table,lower-ranked cached reference
 Soil_ASV_B,4,Bacillus_subtilis_168,NR_102783.2,Bacillus subtilis subsp. subtilis strain 168,490,102,0.208163,79.184,precomputed class-safe teaching hit table,lower-ranked cached reference
 Soil_ASV_B,5,Acidobacterium_capsulatum_ATCC51196,NR_074106.1,Acidobacterium capsulatum ATCC 51196,506,112,0.221344,77.866,precomputed class-safe teaching hit table,lower-ranked cached reference
