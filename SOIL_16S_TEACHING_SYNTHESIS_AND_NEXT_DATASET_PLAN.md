@@ -6,10 +6,10 @@ Date: 2026-05-25
 
 The current Colab cache was built as a controlled teaching cache, not as a full real metagenomics dataset. That was a good decision for the first student run because it gives known answers, avoids live BLAST failures, and lets students learn the logic of species-like identification and tree reading without software installation.
 
-For the fuller module you now want, the best plan is:
+For the fuller module you want, the design is now:
 
 1. Keep the current tiny cache as the first "how the method works" lesson.
-2. Add a second cached real soil microbiome dataset for abundance/statistics, preferably the QIIME 2 Atacama soil microbiome tutorial dataset.
+2. Use the cached QIIME 2 Atacama soil microbiome mini-dataset for real abundance/statistics.
 3. Add a Baum-style tree-thinking handout using original questions based on our soil bacteria, not copied quiz pages.
 4. Add a tree/evolution section that distinguishes closest-reference identification from evolutionary relatedness.
 
@@ -137,11 +137,11 @@ Recommended student language:
 
 > Abundance statistics ask whether sample groups differ. Tree support asks whether a relationship is stable under resampling. They are related parts of the story, but not the same statistic.
 
-## Better Real Dataset For The Next Version
+## Real Soil Dataset Added
 
-The current dataset is good for a first controlled lesson. It is too small and synthetic for a full microbiome-analysis lesson.
+The current tiny teaching cache is good for a first controlled lesson. It is too small and synthetic for real abundance statistics, so the notebook now includes a second cached dataset for that purpose.
 
-The strongest next dataset is the QIIME 2 Atacama soil microbiome tutorial dataset.
+The added dataset is the QIIME 2 Atacama soil microbiome tutorial dataset.
 
 Why it fits:
 
@@ -151,19 +151,29 @@ Why it fits:
 - The biological story is clear: aridity/humidity is associated with soil microbiome structure.
 - QIIME 2 already frames guiding questions for richness, evenness, beta diversity, metadata association, and phylum abundance.
 
-How we should use it in Colab:
+How it is used in Colab:
 
 - Do not run full QIIME 2 in the student Colab.
-- Preprocess/cache a small derived table before class.
+- Preprocess/cache small derived tables before class.
 - Include:
   - sample metadata,
   - feature/ASV abundance table,
-  - taxonomy table,
   - representative ASV sequences,
-  - a small tree or distance matrix,
   - precomputed diversity/statistical summaries.
 
-Then students can do real interpretation in the browser without installing conda, QIIME 2, or external binaries.
+Implemented local cache files:
+
+- `atacama_sample_metadata_mini.csv`: 61 Atacama soil samples with selected environmental metadata.
+- `atacama_feature_table_top12.csv`: counts for the 12 most abundant ASVs plus all other ASVs.
+- `atacama_relative_abundance_top12.csv`: relative abundance percentages.
+- `atacama_feature_key.csv`: local ASV labels mapped to original QIIME feature IDs.
+- `atacama_top_asv_sequences.fasta`: representative sequences for those top ASVs.
+- `atacama_top_asv_stats.csv`: Spearman humidity tests and Mann-Whitney vegetation tests with Benjamini-Hochberg q-values.
+- `atacama_alpha_diversity.csv`: total reads, observed ASVs, and Shannon entropy.
+- `atacama_alpha_diversity_stats.csv`: alpha-diversity correlation with humidity and q-values.
+- `atacama_mini_manifest.json`: source URLs, DOI, and provenance.
+
+Students can now do real interpretation in the browser without installing conda, QIIME 2, or external binaries.
 
 ## Other Dataset Options
 
@@ -261,7 +271,7 @@ Activity:
 
 ### Part 5: Real Soil Abundance And Statistics
 
-Use Atacama-derived cached data.
+Use Atacama-derived cached data already embedded in the generated notebook.
 
 Activities:
 
@@ -279,13 +289,12 @@ Students write:
 3. whether abundance patterns differ across soil metadata,
 4. what the analysis cannot prove.
 
-## Recommended Next Implementation
+## Remaining Next Implementation
 
-1. Add a cached Atacama soil mini-dataset for real abundance/statistics.
-2. Add a second notebook section: "from identification to evolutionary relatedness."
-3. Add a bootstrap-support teaching plot for the small tree.
-4. Keep all heavy preprocessing outside the student Colab.
-5. Later option: replace teaching E-values with real pre-run BLAST XML if exact BLAST statistics are important for the class.
+1. Add a bootstrap-support teaching plot for the small 16S tree.
+2. Add one short "read this tree" cell that directly references the printout concepts before students interpret the generated tree.
+3. Keep all heavy preprocessing outside the student Colab.
+4. Later option: replace teaching E-values with real pre-run BLAST XML if exact BLAST statistics are important for the class.
 
 ## Sources Reviewed
 

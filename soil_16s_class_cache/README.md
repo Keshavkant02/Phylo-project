@@ -21,6 +21,16 @@ Files:
 - `pilot_16s_cached_blast.xml`: cached BLAST-like XML for teaching ranked-hit parsing without live BLAST.
 - `pilot_16s_abundance_table.csv`: toy microbiome-style counts.
 - `pilot_16s_manifest.json`: provenance and class-use notes.
+- `atacama_sample_metadata_mini.csv`: selected sample metadata from the QIIME 2 Atacama soil tutorial.
+- `atacama_feature_table_top12.csv`: counts for the 12 most abundant Atacama ASVs plus all other ASVs.
+- `atacama_relative_abundance_top12.csv`: relative abundance percentages for the same ASVs.
+- `atacama_feature_key.csv`: local ASV labels mapped to original QIIME feature IDs.
+- `atacama_top_asv_sequences.fasta`: representative 16S sequences for the top Atacama ASVs.
+- `atacama_top_asv_stats.csv`: humidity and vegetation association tests with Benjamini-Hochberg q-values.
+- `atacama_alpha_diversity.csv`: total reads, observed ASVs, and Shannon entropy per Atacama sample.
+- `atacama_alpha_diversity_stats.csv`: alpha-diversity correlation tests with q-values.
+- `atacama_mini_manifest.json`: Atacama source URLs, DOI, and class-use notes.
+- `ATACAMA_MINI_README.md`: short provenance note for the real soil mini-cache.
 - `cache_validation_report.json`: last local validation result from the builder.
 - `notebook_execution_report.json`: result from executing the generated notebook with the verifier.
 - `VISUAL_QA_TUFTE.md`: visualization checklist used for the student-facing figures.

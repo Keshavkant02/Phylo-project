@@ -18,13 +18,16 @@ Local notebook execution passed after rebuilding the notebook:
 
 Observed validation result:
 
-- 18 code cells executed.
+- 21 code cells executed.
 - 5 reference 16S sequences loaded.
 - 2 teaching ASV/query reads loaded.
 - 10 cached BLAST-like XML hit rows parsed.
+- 61 Atacama soil sample metadata rows loaded.
+- 12 Atacama ASV statistic rows loaded.
+- 3 Atacama alpha-diversity statistic rows loaded.
 - `Soil_ASV_A -> Bacillus_subtilis_168`.
 - `Soil_ASV_B -> Rhizobium_leguminosarum_IAM12609`.
-- Distance matrix, closest-reference report, UPGMA Newick tree, NJ Newick tree, and metadata export were written.
+- Distance matrix, closest-reference report, UPGMA Newick tree, NJ Newick tree, metadata export, Atacama ASV stats, Atacama alpha-diversity stats, Atacama metadata, and Atacama relative-abundance exports were written.
 
 Raw GitHub cache check passed for the already-published cache URL:
 
@@ -39,6 +42,7 @@ The workflow is scientifically honest for teaching because it separates three id
 1. A microbiome count table says a read/ASV exists in samples.
 2. A marker comparison can identify the closest cached reference sequence.
 3. A distance tree is a hypothesis from one aligned marker window, not proof of exact species identity.
+4. Abundance statistics test sample-metadata associations and must not be read as tree support.
 
 The notebook now states that this is a browser-only 16S marker/metabarcoding pilot and not shotgun metagenomics. The final reporting sentence is appropriately cautious: students report "closest reference" rather than "this is species X."
 
@@ -58,7 +62,8 @@ Remaining deliberate simplifications:
 
 - The cached `pilot_16s_cached_blast.xml` is BLAST-like teaching XML, not a live NCBI BLAST result.
 - The star alignment is a class-safe teaching approximation. It is useful for a small reference/query set but should be replaced by MAFFT or another multiple aligner for project-grade analysis.
-- The toy abundance table is for narrative context only; it is not differential abundance analysis.
+- The toy abundance table is for narrative context only. Real abundance/statistics teaching now uses the cached Atacama mini-dataset.
+- The Atacama q-values are Benjamini-Hochberg adjusted association-test p-values. They are not bootstrap values and not phylogenetic branch support.
 - No 3D effects are used in scientific figures because they would distort distances and reduce graphical integrity.
 
 ## Visualization Review
@@ -77,6 +82,8 @@ Before teaching live, run the notebook once in Colab at normal classroom project
 
 - Biopython `PairwiseAligner` supports global and local pairwise alignments and exposes alignment parameters: https://biopython.org/docs/latest/Tutorial/chapter_pairwise.html
 - Biopython `DistanceTreeConstructor` supports distance-matrix UPGMA and neighbor-joining tree construction: https://biopython.org/docs/latest/api/Bio.Phylo.TreeConstruction.html
+- QIIME 2 Atacama soil tutorial provides the soil microbiome teaching dataset and sample metadata: https://docs.qiime2.org/2024.10/tutorials/atacama-soils/
+- QIIME 2 q2-vsearch chimera tutorial provides the cached Atacama feature table and representative sequence artifacts used for the mini-cache: https://docs.qiime2.org/2024.10/tutorials/chimera/
 - NCBI BLAST Common URL API supports programmatic submission/retrieval, but this is deliberately not the default class path: https://blast.ncbi.nlm.nih.gov/doc/blast-help/urlapi.html
 - SILVA provides aligned and quality-controlled SSU/LSU rRNA resources and web tools: https://www.arb-silva.de/documentation/background/
 - RDP provides aligned and annotated rRNA sequence data plus classifier/aligner tools: https://academic.oup.com/nar/article/42/D1/D633/1063201

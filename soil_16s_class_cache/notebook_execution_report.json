@@ -1,16 +1,22 @@
 {
+  "atacama_alpha_stat_rows": 3,
+  "atacama_asv_stat_rows": 12,
   "cached_blast_xml_hits": 10,
   "closest": {
     "Soil_ASV_A": "Bacillus_subtilis_168",
     "Soil_ASV_B": "Rhizobium_leguminosarum_IAM12609"
   },
-  "code_cells_executed": 18,
+  "code_cells_executed": 21,
   "expected_outputs": [
     "soil_microbiome_16s_outputs\\soil_16s_distance_matrix.csv",
     "soil_microbiome_16s_outputs\\soil_16s_closest_reference_report.csv",
     "soil_microbiome_16s_outputs\\soil_16s_upgma_tree.newick",
     "soil_microbiome_16s_outputs\\soil_16s_neighbor_joining_tree.newick",
-    "soil_microbiome_16s_outputs\\soil_16s_metadata_used.csv"
+    "soil_microbiome_16s_outputs\\soil_16s_metadata_used.csv",
+    "soil_microbiome_16s_outputs\\atacama_top_asv_stats.csv",
+    "soil_microbiome_16s_outputs\\atacama_alpha_diversity_stats.csv",
+    "soil_microbiome_16s_outputs\\atacama_sample_metadata_mini.csv",
+    "soil_microbiome_16s_outputs\\atacama_relative_abundance_top12.csv"
   ],
   "notebook": "soil_microbiome_16s_class_safe_colab.ipynb",
   "status": "passed"

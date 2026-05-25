@@ -10,6 +10,7 @@ The class priority is reliability: students should open the Colab, run top to bo
 
 - Theme: soil microbiome species finding and relatedness reporting.
 - Dataset: five soil-relevant 16S rRNA reference species cached before class.
+- Real soil extension: QIIME 2 Atacama soil mini-cache for abundance, metadata association, and q-value teaching.
 - Student task: compare one or more unknown soil ASV/read sequences against cached references, identify closest references, build distance-based trees, and report the claim cautiously.
 - Teaching level: introductory but scientifically honest.
 - Main method: cached 16S marker-window comparison, distance matrix, UPGMA, and neighbor joining.
@@ -26,6 +27,7 @@ Required cache files:
 - `pilot_16s_metadata.csv`: labels, accessions, source database, source URL, phylum/group, soil context, and interpretation notes.
 - `pilot_16s_abundance_table.csv`: small toy sample table so the workflow feels microbiome-like without pretending to be full shotgun metagenomics.
 - `pilot_16s_manifest.json`: cache provenance, retrieval date, and class-use notes.
+- `atacama_*`: derived Atacama soil sample metadata, top-ASV count/relative-abundance tables, representative sequences, alpha diversity, and BH-adjusted association statistics.
 
 Colab loading rule:
 
@@ -49,6 +51,7 @@ The notebook should try GitHub raw files when `USE_GITHUB_CACHE=True`, but it mu
 10. State what the tree can and cannot claim from one short 16S marker.
 11. Optional: replace the cached teaching reads with project reads later.
 12. Optional: run MAFFT/IQ-TREE as an advanced model-based extension.
+13. Use the Atacama mini-cache to separate abundance/statistical questions from tree-support questions.
 
 ## Tool Decision
 
@@ -106,6 +109,7 @@ Students should finish with a claim like:
 - Notebook avoids live BLAST/NCBI in the default path.
 - Notebook includes UPGMA and neighbor-joining trees.
 - Notebook explains that IQ-TREE is optional and model-based.
+- Notebook includes real Atacama soil ASV statistics with adjusted q-values.
 - Notebook code cells parse as Python.
 - Plotting code uses Okabe-Ito and viridis/cividis.
 - Claims are cautious about 16S species resolution.

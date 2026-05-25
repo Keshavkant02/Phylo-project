@@ -11,6 +11,16 @@ This folder is ready to be committed to any GitHub repository and loaded by Cola
 - `pilot_16s_cached_blast.xml`
 - `pilot_16s_abundance_table.csv`
 - `pilot_16s_manifest.json`
+- `atacama_sample_metadata_mini.csv`
+- `atacama_feature_table_top12.csv`
+- `atacama_relative_abundance_top12.csv`
+- `atacama_feature_key.csv`
+- `atacama_top_asv_sequences.fasta`
+- `atacama_top_asv_stats.csv`
+- `atacama_alpha_diversity.csv`
+- `atacama_alpha_diversity_stats.csv`
+- `atacama_mini_manifest.json`
+- `ATACAMA_MINI_README.md`
 - `cache_validation_report.json`
 - `notebook_execution_report.json`
 - `VISUAL_QA_TUFTE.md`
@@ -57,6 +67,15 @@ for name in [
     "pilot_16s_cached_blast.xml",
     "pilot_16s_abundance_table.csv",
     "pilot_16s_manifest.json",
+    "atacama_sample_metadata_mini.csv",
+    "atacama_feature_table_top12.csv",
+    "atacama_relative_abundance_top12.csv",
+    "atacama_feature_key.csv",
+    "atacama_top_asv_sequences.fasta",
+    "atacama_top_asv_stats.csv",
+    "atacama_alpha_diversity.csv",
+    "atacama_alpha_diversity_stats.csv",
+    "atacama_mini_manifest.json",
 ]:
     url = f"{base}/{name}"
     with urllib.request.urlopen(url, timeout=20) as r:

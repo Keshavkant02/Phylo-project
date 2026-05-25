@@ -1,5 +1,7 @@
 {
   "checks": {
+    "atacama_alpha_stat_rows": 3,
+    "atacama_asv_stat_rows": 12,
     "cached_blast_xml_hits": 10,
     "cached_hit_rows": 10,
     "closest": {

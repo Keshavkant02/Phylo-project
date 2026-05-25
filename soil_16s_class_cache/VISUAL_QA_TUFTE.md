@@ -12,6 +12,8 @@ This checklist applies to `soil_microbiome_16s_class_safe_colab.ipynb`.
 
 - Workflow map: labels sit above the marks; connectors are thin gray lines.
 - Abundance plot: stacked bars encode the toy count table; no 3D effects.
+- Atacama scatterplots: point positions encode real samples; vegetation is color-coded with Okabe-Ito colors.
+- Atacama q-value plot: x-axis uses BH adjusted p-values and marks the 0.05 guide line.
 - Alignment view: base colors encode A/C/G/T/N/gap and include a compact legend; variable columns are small ticks.
 - Distance matrix: colorbar says exactly what the values mean.
 - Tree plots: branch length axis remains visible; unnecessary plot borders are removed.

@@ -14,6 +14,19 @@ CACHE_DIR = ROOT / "soil_16s_class_cache"
 NOTEBOOK_PATH = ROOT / "soil_microbiome_16s_class_safe_colab.ipynb"
 RETRIEVED_DATE = "2026-05-25"
 
+ATACAMA_CACHE_FILES = [
+    "atacama_sample_metadata_mini.csv",
+    "atacama_feature_table_top12.csv",
+    "atacama_relative_abundance_top12.csv",
+    "atacama_feature_key.csv",
+    "atacama_top_asv_sequences.fasta",
+    "atacama_top_asv_stats.csv",
+    "atacama_alpha_diversity.csv",
+    "atacama_alpha_diversity_stats.csv",
+    "atacama_mini_manifest.json",
+    "ATACAMA_MINI_README.md",
+]
+
 
 RAW_REFERENCE_FASTA = r""">NR_102783.2 Bacillus subtilis subsp. subtilis strain 168 16S ribosomal RNA, complete sequence
 TTATCGGAGAGTTTGATCCTGGCTCAGGACGAACGCTGGCGGCGTGCCTAATACATGCAAGTCGAGCGGA
@@ -556,6 +569,16 @@ def make_cache_files() -> dict[str, str]:
         - `pilot_16s_cached_blast.xml`: cached BLAST-like XML for teaching ranked-hit parsing without live BLAST.
         - `pilot_16s_abundance_table.csv`: toy microbiome-style counts.
         - `pilot_16s_manifest.json`: provenance and class-use notes.
+        - `atacama_sample_metadata_mini.csv`: selected sample metadata from the QIIME 2 Atacama soil tutorial.
+        - `atacama_feature_table_top12.csv`: counts for the 12 most abundant Atacama ASVs plus all other ASVs.
+        - `atacama_relative_abundance_top12.csv`: relative abundance percentages for the same ASVs.
+        - `atacama_feature_key.csv`: local ASV labels mapped to original QIIME feature IDs.
+        - `atacama_top_asv_sequences.fasta`: representative 16S sequences for the top Atacama ASVs.
+        - `atacama_top_asv_stats.csv`: humidity and vegetation association tests with Benjamini-Hochberg q-values.
+        - `atacama_alpha_diversity.csv`: total reads, observed ASVs, and Shannon entropy per Atacama sample.
+        - `atacama_alpha_diversity_stats.csv`: alpha-diversity correlation tests with q-values.
+        - `atacama_mini_manifest.json`: Atacama source URLs, DOI, and class-use notes.
+        - `ATACAMA_MINI_README.md`: short provenance note for the real soil mini-cache.
         - `cache_validation_report.json`: last local validation result from the builder.
         - `notebook_execution_report.json`: result from executing the generated notebook with the verifier.
         - `VISUAL_QA_TUFTE.md`: visualization checklist used for the student-facing figures.
@@ -589,6 +612,16 @@ CACHE_FILES = [
     "pilot_16s_cached_blast.xml",
     "pilot_16s_abundance_table.csv",
     "pilot_16s_manifest.json",
+    "atacama_sample_metadata_mini.csv",
+    "atacama_feature_table_top12.csv",
+    "atacama_relative_abundance_top12.csv",
+    "atacama_feature_key.csv",
+    "atacama_top_asv_sequences.fasta",
+    "atacama_top_asv_stats.csv",
+    "atacama_alpha_diversity.csv",
+    "atacama_alpha_diversity_stats.csv",
+    "atacama_mini_manifest.json",
+    "ATACAMA_MINI_README.md",
     "cache_validation_report.json",
     "notebook_execution_report.json",
 ]
@@ -618,6 +651,16 @@ This folder is ready to be committed to any GitHub repository and loaded by Cola
 - `pilot_16s_cached_blast.xml`
 - `pilot_16s_abundance_table.csv`
 - `pilot_16s_manifest.json`
+- `atacama_sample_metadata_mini.csv`
+- `atacama_feature_table_top12.csv`
+- `atacama_relative_abundance_top12.csv`
+- `atacama_feature_key.csv`
+- `atacama_top_asv_sequences.fasta`
+- `atacama_top_asv_stats.csv`
+- `atacama_alpha_diversity.csv`
+- `atacama_alpha_diversity_stats.csv`
+- `atacama_mini_manifest.json`
+- `ATACAMA_MINI_README.md`
 - `cache_validation_report.json`
 - `notebook_execution_report.json`
 - `VISUAL_QA_TUFTE.md`
@@ -664,6 +707,15 @@ for name in [
     "pilot_16s_cached_blast.xml",
     "pilot_16s_abundance_table.csv",
     "pilot_16s_manifest.json",
+    "atacama_sample_metadata_mini.csv",
+    "atacama_feature_table_top12.csv",
+    "atacama_relative_abundance_top12.csv",
+    "atacama_feature_key.csv",
+    "atacama_top_asv_sequences.fasta",
+    "atacama_top_asv_stats.csv",
+    "atacama_alpha_diversity.csv",
+    "atacama_alpha_diversity_stats.csv",
+    "atacama_mini_manifest.json",
 ]:
     url = f"{base}/{name}"
     with urllib.request.urlopen(url, timeout=20) as r:
@@ -687,6 +739,8 @@ This checklist applies to `soil_microbiome_16s_class_safe_colab.ipynb`.
 
 - Workflow map: labels sit above the marks; connectors are thin gray lines.
 - Abundance plot: stacked bars encode the toy count table; no 3D effects.
+- Atacama scatterplots: point positions encode real samples; vegetation is color-coded with Okabe-Ito colors.
+- Atacama q-value plot: x-axis uses BH adjusted p-values and marks the 0.05 guide line.
 - Alignment view: base colors encode A/C/G/T/N/gap and include a compact legend; variable columns are small ticks.
 - Distance matrix: colorbar says exactly what the values mean.
 - Tree plots: branch length axis remains visible; unnecessary plot borders are removed.
@@ -726,6 +780,19 @@ No label should overlap another label or hide a data mark.
         "COLAB_ONE_CELL_LOADER.py": loader_py,
         "PUBLISH_TO_GITHUB.md": publish_md,
         "VISUAL_QA_TUFTE.md": visual_qa_md,
+    }
+
+
+def load_existing_atacama_cache_files() -> dict[str, str]:
+    missing = [name for name in ATACAMA_CACHE_FILES if not (CACHE_DIR / name).exists()]
+    if missing:
+        raise FileNotFoundError(
+            "Run build_atacama_soil_mini_cache.py before building the Colab; missing: "
+            + ", ".join(missing)
+        )
+    return {
+        name: (CACHE_DIR / name).read_text(encoding="utf-8")
+        for name in ATACAMA_CACHE_FILES
     }
 
 
@@ -821,7 +888,11 @@ def code(source: str) -> dict:
 
 def make_notebook(cache_files: dict[str, str]) -> dict:
     cache_literal = json.dumps(
-        {name: content for name, content in cache_files.items() if name.startswith("pilot_")},
+        {
+            name: content
+            for name, content in cache_files.items()
+            if name.startswith(("pilot_", "atacama_"))
+        },
         indent=2,
     ).replace("\n", "\n            ")
 
@@ -841,7 +912,8 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
             3. inspect a small aligned marker window,
             4. turn sequence differences into a distance matrix,
             5. build UPGMA and neighbor-joining trees,
-            6. report a careful closest-reference claim.
+            6. compare this controlled tree exercise with real Atacama soil ASV abundance patterns,
+            7. report a careful closest-reference claim.
 
             A tree is a hypothesis from evidence. In this notebook the evidence is one short 16S marker window, so the final claim must stay cautious.
 
@@ -854,6 +926,7 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
             USE_GITHUB_CACHE = False #@param {type:"boolean"}
             CACHE_BASE_URL = "" #@param {type:"string"}
             QUERY_TO_REPORT = "Soil_ASV_A" #@param ["Soil_ASV_A", "Soil_ASV_B"]
+            ATACAMA_ASV_TO_PLOT = "Atacama_ASV_01" #@param ["Atacama_ASV_01", "Atacama_ASV_02", "Atacama_ASV_03", "Atacama_ASV_04", "Atacama_ASV_05", "Atacama_ASV_06", "Atacama_ASV_07", "Atacama_ASV_08", "Atacama_ASV_09", "Atacama_ASV_10", "Atacama_ASV_11", "Atacama_ASV_12"]
             TREE_METHOD_TO_SHOW = "Compare UPGMA and neighbor joining" #@param ["UPGMA", "Neighbor joining", "Compare UPGMA and neighbor joining"]
             MARKER_WINDOW_BASES = 520 #@param {type:"slider", min:200, max:560, step:20}
             ALIGNMENT_START = 130 #@param {type:"slider", min:0, max:420, step:10}
@@ -973,6 +1046,14 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
             cached_blast_xml = load_cache_file("pilot_16s_cached_blast.xml")
             abundance_csv = load_cache_file("pilot_16s_abundance_table.csv")
             manifest_json = load_cache_file("pilot_16s_manifest.json")
+            atacama_metadata_csv = load_cache_file("atacama_sample_metadata_mini.csv")
+            atacama_counts_csv = load_cache_file("atacama_feature_table_top12.csv")
+            atacama_relative_csv = load_cache_file("atacama_relative_abundance_top12.csv")
+            atacama_feature_key_csv = load_cache_file("atacama_feature_key.csv")
+            atacama_stats_csv = load_cache_file("atacama_top_asv_stats.csv")
+            atacama_alpha_csv = load_cache_file("atacama_alpha_diversity.csv")
+            atacama_alpha_stats_csv = load_cache_file("atacama_alpha_diversity_stats.csv")
+            atacama_manifest_json = load_cache_file("atacama_mini_manifest.json")
 
             references = list(SeqIO.parse(StringIO(ref_fasta), "fasta"))
             queries = list(SeqIO.parse(StringIO(query_fasta), "fasta"))
@@ -981,6 +1062,14 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
             cached_hits = pd.read_csv(StringIO(cached_hits_csv))
             abundance = pd.read_csv(StringIO(abundance_csv))
             manifest = json.loads(manifest_json)
+            atacama_metadata = pd.read_csv(StringIO(atacama_metadata_csv))
+            atacama_counts = pd.read_csv(StringIO(atacama_counts_csv))
+            atacama_relative = pd.read_csv(StringIO(atacama_relative_csv))
+            atacama_feature_key = pd.read_csv(StringIO(atacama_feature_key_csv))
+            atacama_stats = pd.read_csv(StringIO(atacama_stats_csv))
+            atacama_alpha = pd.read_csv(StringIO(atacama_alpha_csv))
+            atacama_alpha_stats = pd.read_csv(StringIO(atacama_alpha_stats_csv))
+            atacama_manifest = json.loads(atacama_manifest_json)
 
             def parse_cached_blast_xml(xml_text):
                 root = ET.fromstring(xml_text)
@@ -1010,6 +1099,8 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
             print(f"Reference sequences: {len(references)}")
             print(f"Query reads: {len(queries)}")
             print(f"Cached BLAST-like XML hits: {len(cached_blast_hits)}")
+            print(f"Atacama samples: {len(atacama_metadata)}")
+            print(f"Atacama top ASVs in cache: {len(atacama_stats)}")
             print("Cache retrieved date:", manifest["retrieved_date"])
             """
         ),
@@ -1225,7 +1316,208 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
         ),
         md(
             """
-            ## 6. Make a comparable 16S marker window
+            ## 6. Real soil ASV abundance: Atacama mini-cache
+
+            The toy table above is useful for the controlled species-finding exercise. To show a real soil microbiome pattern, this notebook also carries a small derived cache from the QIIME 2 Atacama soil microbiome tutorial.
+
+            Here the question changes: not "which species is this read closest to?" but "which ASVs vary with sample metadata such as soil humidity or vegetation?"
+
+            The q-values below are Benjamini-Hochberg adjusted p-values for abundance/metadata association tests. They are not tree branch support values.
+            """
+        ),
+        code(
+            """
+            #@title Show the real-soil cache provenance
+            atacama_source_summary = pd.DataFrame([
+                {
+                    "item": "source tutorial",
+                    "value": atacama_manifest["source_tutorial"],
+                },
+                {
+                    "item": "source study",
+                    "value": atacama_manifest["source_study"],
+                },
+                {
+                    "item": "DOI",
+                    "value": atacama_manifest["source_doi"],
+                },
+                {
+                    "item": "samples in mini-cache",
+                    "value": atacama_manifest["sample_count"],
+                },
+                {
+                    "item": "full table ASVs",
+                    "value": atacama_manifest["feature_count_full_table"],
+                },
+                {
+                    "item": "top ASVs used here",
+                    "value": atacama_manifest["top_feature_count_in_cache"],
+                },
+            ])
+            wrapped_table(atacama_source_summary, ["item", "value"])
+
+            atacama_stats_view = (
+                atacama_stats
+                .sort_values("spearman_q_bh_vs_humidity")
+                [[
+                    "asv_label",
+                    "mean_relative_abundance_percent",
+                    "max_relative_abundance_percent",
+                    "spearman_rho_vs_humidity",
+                    "spearman_p_vs_humidity",
+                    "spearman_q_bh_vs_humidity",
+                    "mannwhitney_q_bh_vegetated_vs_unvegetated",
+                ]]
+                .head(8)
+                .round(5)
+            )
+            display(atacama_stats_view)
+            """
+        ),
+        code(
+            """
+            #@title Plot one Atacama ASV against soil humidity
+            selected_asv = ATACAMA_ASV_TO_PLOT
+            if selected_asv not in atacama_relative.columns:
+                selected_asv = "Atacama_ASV_01"
+
+            atacama_plot = atacama_metadata.merge(atacama_relative, on="sample_id", how="inner")
+            atacama_plot["humidity"] = pd.to_numeric(
+                atacama_plot["average_soil_relative_humidity"],
+                errors="coerce",
+            )
+            atacama_plot["relative_abundance_percent"] = pd.to_numeric(
+                atacama_plot[selected_asv],
+                errors="coerce",
+            )
+            atacama_plot = atacama_plot.dropna(subset=["humidity", "relative_abundance_percent"])
+
+            stat_row = atacama_stats.loc[atacama_stats["asv_label"] == selected_asv].iloc[0]
+            veg_palette = {"yes": OKABE_ITO["bluish_green"], "no": OKABE_ITO["vermillion"]}
+            veg_labels = {"yes": "vegetated", "no": "unvegetated"}
+
+            fig, axes = plt.subplots(
+                1,
+                2,
+                figsize=(11, 4.2),
+                gridspec_kw={"width_ratios": [1.25, 1.0]},
+            )
+
+            ax = axes[0]
+            for vegetation_value, group in atacama_plot.groupby("vegetation"):
+                ax.scatter(
+                    group["humidity"],
+                    group["relative_abundance_percent"],
+                    s=42,
+                    alpha=0.82,
+                    color=veg_palette.get(vegetation_value, OKABE_ITO["gray"]),
+                    edgecolor="white",
+                    linewidth=0.5,
+                    label=veg_labels.get(vegetation_value, vegetation_value),
+                )
+            ax.set_xlabel("average soil relative humidity (%)")
+            ax.set_ylabel(f"{selected_asv} relative abundance (%)")
+            ax.set_title(
+                f"{selected_asv}: abundance vs humidity",
+                loc="left",
+                fontsize=12,
+            )
+            ax.text(
+                0.02,
+                0.98,
+                f"Spearman rho={stat_row['spearman_rho_vs_humidity']:.2f}; q={stat_row['spearman_q_bh_vs_humidity']:.3g}",
+                transform=ax.transAxes,
+                va="top",
+                ha="left",
+                fontsize=9,
+                bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.72, "pad": 2},
+            )
+            ax.legend(frameon=False, title="")
+            ax.spines[["top", "right"]].set_visible(False)
+            ax.grid(axis="y", color="#eeeeee", linewidth=0.8)
+
+            ax = axes[1]
+            q_rank = atacama_stats.sort_values("spearman_q_bh_vs_humidity").head(8).copy()
+            q_rank = q_rank.sort_values("spearman_q_bh_vs_humidity", ascending=True)
+            colors = [
+                OKABE_ITO["blue"] if q <= 0.05 else "#9E9E9E"
+                for q in q_rank["spearman_q_bh_vs_humidity"]
+            ]
+            ax.barh(
+                q_rank["asv_label"],
+                q_rank["spearman_q_bh_vs_humidity"],
+                color=colors,
+                edgecolor="white",
+                linewidth=0.7,
+            )
+            ax.axvline(0.05, color="#555555", linewidth=1.0)
+            ax.text(0.052, -0.45, "q=0.05", fontsize=9, color="#555555")
+            ax.set_xscale("log")
+            ax.invert_yaxis()
+            ax.set_xlabel("BH adjusted p-value for humidity association")
+            ax.set_ylabel("")
+            ax.set_title("Top Atacama ASV humidity tests", loc="left", fontsize=12)
+            ax.spines[["top", "right"]].set_visible(False)
+            ax.grid(axis="x", color="#eeeeee", linewidth=0.8)
+
+            plt.tight_layout()
+            plt.show()
+            """
+        ),
+        code(
+            """
+            #@title Plot alpha diversity against humidity
+            alpha_plot = atacama_metadata.merge(atacama_alpha, on="sample_id", how="inner")
+            alpha_plot["humidity"] = pd.to_numeric(
+                alpha_plot["average_soil_relative_humidity"],
+                errors="coerce",
+            )
+            alpha_plot["observed_asvs"] = pd.to_numeric(alpha_plot["observed_asvs"], errors="coerce")
+            alpha_plot = alpha_plot.dropna(subset=["humidity", "observed_asvs"])
+
+            observed_row = (
+                atacama_alpha_stats
+                .loc[atacama_alpha_stats["metric"] == "observed_asvs"]
+                .iloc[0]
+            )
+
+            fig, ax = plt.subplots(figsize=(7.5, 4.2))
+            for vegetation_value, group in alpha_plot.groupby("vegetation"):
+                ax.scatter(
+                    group["humidity"],
+                    group["observed_asvs"],
+                    s=42,
+                    alpha=0.82,
+                    color=veg_palette.get(vegetation_value, OKABE_ITO["gray"]),
+                    edgecolor="white",
+                    linewidth=0.5,
+                    label=veg_labels.get(vegetation_value, vegetation_value),
+                )
+            ax.set_xlabel("average soil relative humidity (%)")
+            ax.set_ylabel("observed ASVs")
+            ax.set_title("Atacama alpha diversity: observed ASVs vs humidity", loc="left", fontsize=12)
+            ax.text(
+                0.02,
+                0.98,
+                f"Spearman rho={observed_row['spearman_rho_vs_humidity']:.2f}; q={observed_row['spearman_q_bh_vs_humidity']:.3g}",
+                transform=ax.transAxes,
+                va="top",
+                ha="left",
+                fontsize=9,
+                bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.72, "pad": 2},
+            )
+            ax.legend(frameon=False, title="")
+            ax.spines[["top", "right"]].set_visible(False)
+            ax.grid(axis="y", color="#eeeeee", linewidth=0.8)
+            plt.tight_layout()
+            plt.show()
+
+            display(atacama_alpha_stats.round(5))
+            """
+        ),
+        md(
+            """
+            ## 7. Make a comparable 16S marker window
 
             How can we compare sequences fairly? First, we choose the same marker region.
 
@@ -1404,7 +1696,7 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
         ),
         md(
             """
-            ## 7. Compute sequence distances
+            ## 8. Compute sequence distances
 
             Once the sequences are comparable, what is the simplest number we can calculate?
 
@@ -1496,7 +1788,7 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
         ),
         md(
             """
-            ## 8. Build distance trees
+            ## 9. Build distance trees
 
             How does a distance matrix become a tree?
 
@@ -1556,7 +1848,7 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
         ),
         md(
             """
-            ## 9. Report the result carefully
+            ## 10. Report the result carefully
 
             What exactly did we build?
 
@@ -1581,7 +1873,7 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
         ),
         md(
             """
-            ## 10. Optional: where IQ-TREE fits
+            ## 11. Optional: where IQ-TREE fits
 
             IQ-TREE is useful, but for a different teaching purpose.
 
@@ -1606,7 +1898,7 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
         ),
         md(
             """
-            ## 11. Replace the teaching cache later
+            ## 12. Replace the teaching cache later
 
             How does this become your real soil microbiome project?
 
@@ -1655,6 +1947,10 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
             Phylo.write(upgma_tree, output_dir / "soil_16s_upgma_tree.newick", "newick")
             Phylo.write(nj_tree, output_dir / "soil_16s_neighbor_joining_tree.newick", "newick")
             metadata.to_csv(output_dir / "soil_16s_metadata_used.csv", index=False)
+            atacama_stats.to_csv(output_dir / "atacama_top_asv_stats.csv", index=False)
+            atacama_alpha_stats.to_csv(output_dir / "atacama_alpha_diversity_stats.csv", index=False)
+            atacama_metadata.to_csv(output_dir / "atacama_sample_metadata_mini.csv", index=False)
+            atacama_relative.to_csv(output_dir / "atacama_relative_abundance_top12.csv", index=False)
             print("Wrote outputs to:", output_dir.resolve())
             """
         ),
@@ -1665,6 +1961,8 @@ def make_notebook(cache_files: dict[str, str]) -> dict:
             - Which query has the closest reference in the cached set?
             - Which references cluster near each other?
             - Does a high 16S similarity prove exact species identity?
+            - Which Atacama ASV has the strongest humidity association after BH correction?
+            - Why are abundance q-values different from tree branch support values?
             - What extra evidence would you want before making a stronger species claim?
             - How would the workflow change when you replace these cached teaching reads with your team's real project reads?
             """
@@ -1713,10 +2011,20 @@ def smoke_test_core(cache_files: dict[str, str]) -> dict[str, object]:
     cached_hits = list(csv.DictReader(StringIO(cache_files["pilot_16s_cached_hits.csv"])))
     cached_blast_root = ET.fromstring(cache_files["pilot_16s_cached_blast.xml"])
     cached_xml_hits = cached_blast_root.findall(".//Hit")
+    atacama_stats = list(csv.DictReader(StringIO(cache_files["atacama_top_asv_stats.csv"])))
+    atacama_alpha_stats = list(csv.DictReader(StringIO(cache_files["atacama_alpha_diversity_stats.csv"])))
+    atacama_manifest = json.loads(cache_files["atacama_mini_manifest.json"])
     assert len(refs) == 5, f"expected 5 references, found {len(refs)}"
     assert len(queries) == 2, f"expected 2 queries, found {len(queries)}"
     assert len(cached_hits) == 10, f"expected 10 cached hit rows, found {len(cached_hits)}"
     assert len(cached_xml_hits) == 10, f"expected 10 XML hit rows, found {len(cached_xml_hits)}"
+    assert len(atacama_stats) == 12, f"expected 12 Atacama ASV stat rows, found {len(atacama_stats)}"
+    assert len(atacama_alpha_stats) == 3, f"expected 3 alpha-diversity stat rows, found {len(atacama_alpha_stats)}"
+    assert atacama_manifest["sample_count"] == 61, atacama_manifest["sample_count"]
+    for row in atacama_stats:
+        for column in ["spearman_q_bh_vs_humidity", "mannwhitney_q_bh_vegetated_vs_unvegetated"]:
+            value = float(row[column])
+            assert math.isfinite(value) and 0 <= value <= 1, f"invalid Atacama q-value: {row}"
 
     windows: dict[str, str] = {}
     for label, (_header, seq) in refs.items():
@@ -1769,6 +2077,8 @@ def smoke_test_core(cache_files: dict[str, str]) -> dict[str, object]:
         "closest": {"Soil_ASV_A": closest_a, "Soil_ASV_B": closest_b},
         "cached_hit_rows": len(cached_hits),
         "cached_blast_xml_hits": len(cached_xml_hits),
+        "atacama_asv_stat_rows": len(atacama_stats),
+        "atacama_alpha_stat_rows": len(atacama_alpha_stats),
         "terminal_count": len(labels),
     }
 
@@ -1776,6 +2086,7 @@ def smoke_test_core(cache_files: dict[str, str]) -> dict[str, object]:
 def main() -> None:
     CACHE_DIR.mkdir(exist_ok=True)
     cache_files = make_cache_files()
+    cache_files.update(load_existing_atacama_cache_files())
     for name, content in cache_files.items():
         (CACHE_DIR / name).write_text(content, encoding="utf-8", newline="\n")
 

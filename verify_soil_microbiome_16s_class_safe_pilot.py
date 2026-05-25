@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import shutil
 from pathlib import Path
 
@@ -42,6 +43,10 @@ def main() -> None:
         OUTPUT_DIR / "soil_16s_upgma_tree.newick",
         OUTPUT_DIR / "soil_16s_neighbor_joining_tree.newick",
         OUTPUT_DIR / "soil_16s_metadata_used.csv",
+        OUTPUT_DIR / "atacama_top_asv_stats.csv",
+        OUTPUT_DIR / "atacama_alpha_diversity_stats.csv",
+        OUTPUT_DIR / "atacama_sample_metadata_mini.csv",
+        OUTPUT_DIR / "atacama_relative_abundance_top12.csv",
     ]
     missing = [str(path) for path in expected_outputs if not path.exists() or path.stat().st_size == 0]
     if missing:
@@ -65,6 +70,29 @@ def main() -> None:
         if required_column not in cached_blast_hits.columns:
             raise AssertionError(f"Notebook did not parse cached BLAST-like XML column: {required_column}")
 
+    atacama_stats = namespace.get("atacama_stats")
+    if atacama_stats is None or len(atacama_stats) != 12:
+        raise AssertionError("Notebook did not load the expected 12 Atacama ASV statistic rows")
+    for required_column in [
+        "spearman_q_bh_vs_humidity",
+        "mannwhitney_q_bh_vegetated_vs_unvegetated",
+    ]:
+        if required_column not in atacama_stats.columns:
+            raise AssertionError(f"Notebook did not load Atacama statistic column: {required_column}")
+        values = [float(value) for value in atacama_stats[required_column]]
+        if not all(math.isfinite(value) and 0 <= value <= 1 for value in values):
+            raise AssertionError(f"Atacama statistic column has invalid q-values: {required_column}")
+
+    atacama_alpha_stats = namespace.get("atacama_alpha_stats")
+    if atacama_alpha_stats is None or len(atacama_alpha_stats) != 3:
+        raise AssertionError("Notebook did not load the expected Atacama alpha-diversity statistic rows")
+    if "spearman_q_bh_vs_humidity" not in atacama_alpha_stats.columns:
+        raise AssertionError("Notebook did not load alpha-diversity BH q-values")
+
+    atacama_metadata = namespace.get("atacama_metadata")
+    if atacama_metadata is None or len(atacama_metadata) != 61:
+        raise AssertionError("Notebook did not load the expected 61 Atacama sample metadata rows")
+
     report = {
         "status": "passed",
         "notebook": NOTEBOOK.name,
@@ -72,6 +100,8 @@ def main() -> None:
         "expected_outputs": [str(path.relative_to(ROOT)) for path in expected_outputs],
         "closest": closest_map,
         "cached_blast_xml_hits": int(len(cached_blast_hits)),
+        "atacama_asv_stat_rows": int(len(atacama_stats)),
+        "atacama_alpha_stat_rows": int(len(atacama_alpha_stats)),
     }
     REPORT.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2, sort_keys=True))
