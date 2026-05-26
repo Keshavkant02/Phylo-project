@@ -1,6 +1,0 @@
-clade,tip_count,bootstrap_replicates,bootstrap_support_percent,clade_id
-Acidobacterium_capsulatum_ATCC51196 + Bacillus_subtilis_168 + Pseudomonas_fluorescens_CCM2115 + Soil_ASV_A + Streptomyces_coelicolor_rrnD,5,100,61.0,Clade 1
-Acidobacterium_capsulatum_ATCC51196 + Bacillus_subtilis_168 + Soil_ASV_A + Streptomyces_coelicolor_rrnD,4,100,75.0,Clade 2
-Bacillus_subtilis_168 + Soil_ASV_A + Streptomyces_coelicolor_rrnD,3,100,81.0,Clade 3
-Rhizobium_leguminosarum_IAM12609 + Soil_ASV_B,2,100,100.0,Clade 4
-Bacillus_subtilis_168 + Soil_ASV_A,2,100,100.0,Clade 5

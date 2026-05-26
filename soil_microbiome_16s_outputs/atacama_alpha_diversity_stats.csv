@@ -1,4 +1,0 @@
-metric,spearman_rho_vs_humidity,spearman_p_vs_humidity,spearman_q_bh_vs_humidity
-total_reads,0.32066,0.0192339992704297,0.0288509989056446
-observed_asvs,0.33714,0.0135622852458345,0.0288509989056446
-shannon_entropy,0.13724,0.327112688591157,0.327112688591157

@@ -1,0 +1,55 @@
+{
+  "notebook": "soil_microbiome_16s_class_safe_colab.ipynb",
+  "static": {
+    "cell_count": 35,
+    "code_cells": 14,
+    "markdown_cells": 21,
+    "sections": [
+      "Section 1: Story hook - Atacama Desert",
+      "Section 2: Tree-thinking intro (mammals only)",
+      "Section 3: Atacama dataset story",
+      "Section 4: What is an ASV?",
+      "Section 5: Load cached Atacama data",
+      "Section 6: Alignment of representative ASV sequences",
+      "Section 7: Distance matrix",
+      "Section 8: UPGMA tree (the payoff)",
+      "Section 9: Relative abundance - what is actually in these samples?",
+      "Section 10: Alpha diversity",
+      "Section 11: BH-corrected association tests",
+      "Section 12: Final student report"
+    ]
+  },
+  "runtime": {
+    "samples": 61,
+    "q_value_asvs": 50,
+    "abundance_asvs": 20,
+    "tree_asvs": 12,
+    "alignment_asvs": 8,
+    "association_rows": 100,
+    "association_variables": [
+      "Humidity",
+      "Vegetation"
+    ],
+    "significant_rows": 65,
+    "distance_matrix_shape": [
+      12,
+      12
+    ],
+    "tree_newick_endswith_semicolon": true,
+    "taxonomy_note": "No valid SILVA taxonomy artifact was found locally; taxonomy is not inferred."
+  },
+  "outputs": {
+    "figure_files": [
+      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell03_output00.png",
+      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell05_output00.png",
+      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell13_output00.png",
+      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell16_output00.png",
+      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell19_output00.png",
+      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell23_output00.png",
+      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell27_output00.png",
+      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell30_output00.png",
+      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell32_output00.png"
+    ],
+    "styled_table_outputs": 4
+  }
+}

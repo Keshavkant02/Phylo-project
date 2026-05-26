@@ -1,40 +1,33 @@
-# Soil 16S Class Cache
+# Soil 16S Atacama ASV Cache
 
-This folder is the class-safe data cache for `soil_microbiome_16s_class_safe_colab.ipynb`.
+This folder supports the Atacama-only student notebook:
 
-The default classroom workflow should load these files instead of calling live BLAST, Entrez, SILVA, or other web services during class.
-
-This cache supports a 16S marker/metabarcoding teaching workflow, not a shotgun metagenomics workflow.
-
-One-command Colab pattern after this folder is pushed to GitHub:
-
-```python
-CACHE_BASE_URL = "https://raw.githubusercontent.com/<org>/<repo>/main/soil_16s_class_cache"
+```text
+soil_microbiome_16s_class_safe_colab.ipynb
 ```
 
-Files:
+The current student-facing notebook uses real Atacama 16S ASVs only. It does not use the older synthetic
+`Soil_ASV_A` / `Soil_ASV_B` teaching workflow, live BLAST, neighbor joining, IQ-TREE, or bootstrap sections.
 
-- `pilot_16s_references.fasta`: five NCBI 16S reference sequences.
-- `pilot_16s_query_reads.fasta`: two synthetic teaching ASV/read sequences derived from the cached references.
-- `pilot_16s_metadata.csv`: source, accession, phylum, soil context, and interpretation notes.
-- `pilot_16s_cached_hits.csv`: precomputed closest-reference table for the teaching queries.
-- `pilot_16s_cached_blast.xml`: cached BLAST-like XML for teaching ranked-hit parsing without live BLAST.
-- `pilot_16s_abundance_table.csv`: toy microbiome-style counts.
-- `pilot_16s_manifest.json`: provenance and class-use notes.
-- `atacama_sample_metadata_mini.csv`: selected sample metadata from the QIIME 2 Atacama soil tutorial.
-- `atacama_feature_table_top12.csv`: counts for the 12 most abundant Atacama ASVs plus all other ASVs.
-- `atacama_relative_abundance_top12.csv`: relative abundance percentages for the same ASVs.
-- `atacama_feature_key.csv`: local ASV labels mapped to original QIIME feature IDs.
-- `atacama_top_asv_sequences.fasta`: representative 16S sequences for the top Atacama ASVs.
-- `atacama_top_asv_stats.csv`: humidity and vegetation association tests with Benjamini-Hochberg q-values.
-- `atacama_alpha_diversity.csv`: total reads, observed ASVs, and Shannon entropy per Atacama sample.
-- `atacama_alpha_diversity_stats.csv`: alpha-diversity correlation tests with q-values.
-- `atacama_mini_manifest.json`: Atacama source URLs, DOI, and class-use notes.
-- `ATACAMA_MINI_README.md`: short provenance note for the real soil mini-cache.
-- `cache_validation_report.json`: last local validation result from the builder.
-- `notebook_execution_report.json`: result from executing the generated notebook with the verifier.
-- `VISUAL_QA_TUFTE.md`: visualization checklist used for the student-facing figures.
-- `COLAB_ONE_CELL_LOADER.py`: copy-paste loader for any other Colab notebook.
-- `PUBLISH_TO_GITHUB.md`: publish and pre-class verification checklist.
+## Goal 2 files
 
-Retrieved date recorded in the manifest: 2026-05-25.
+- `goal2_atacama_sample_metadata.csv`: 61 Atacama soil samples with humidity and vegetation metadata.
+- `goal2_atacama_counts_top50.csv`: counts for the top 50 ASVs by prevalence, used for q-value tests.
+- `goal2_atacama_relative_abundance_top20.csv`: top 20 ASVs by mean relative abundance, with remaining ASVs collapsed to `Other`.
+- `goal2_atacama_alpha_diversity.csv`: observed ASVs and Shannon diversity per sample.
+- `goal2_atacama_feature_key.csv`: ASV labels, source feature IDs, abundance ranks, prevalence, and taxonomy fields.
+- `goal2_atacama_rep_seqs_top50_union.fasta`: representative 16S sequences used for alignment, distance, and tree sections.
+- `goal2_atacama_manifest.json`: source and cache-generation metadata.
+- `goal2_verification_report.json`: latest verifier output.
+- `goal2_runtime_audit.json`: runtime dimensions from the executed notebook.
+- `goal2_figure_checks/`: saved PNG outputs from figure cells for visual QA.
+- `ATACAMA_GOAL2_README.md`: provenance and subset policy.
+
+## Scientific notes
+
+Taxonomy is not inferred. If a valid SILVA taxonomy artifact is not present in the local source directory,
+the notebook displays `Unassigned at genus level`.
+
+The source table has only nine ASVs present in at least 10% of samples. The q-value section tests the requested
+top 50 ASVs by prevalence, and the lollipop plot labels only discoveries that also meet the 10% prevalence
+threshold.

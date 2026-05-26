@@ -1,0 +1,17 @@
+{
+  "title": "Goal 2 Atacama soil ASV cache",
+  "source_table": "https://data.qiime2.org/2024.10/tutorials/chimera/atacama-table.qza",
+  "source_rep_seqs": "https://data.qiime2.org/2024.10/tutorials/chimera/atacama-rep-seqs.qza",
+  "source_metadata": "https://data.qiime2.org/2024.10/tutorials/atacama-soils/sample_metadata.tsv",
+  "source_context": "QIIME 2 2024.10 Atacama soil tutorial and q2-vsearch chimera tutorial artifacts.",
+  "taxonomy_note": "No valid SILVA taxonomy artifact was found locally; taxonomy is not inferred.",
+  "sample_count": 61,
+  "feature_count_full_table": 401,
+  "present_threshold_samples": 7,
+  "asvs_at_or_above_10_percent_prevalence": 9,
+  "q_value_asvs": 50,
+  "abundance_asvs": 20,
+  "tree_asvs": 12,
+  "alignment_asvs": 8,
+  "scientific_note": "Taxonomy fields are left unassigned unless a real taxonomy artifact is present; no taxonomy is inferred."
+}
