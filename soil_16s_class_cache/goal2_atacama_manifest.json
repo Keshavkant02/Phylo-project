@@ -4,7 +4,25 @@
   "source_rep_seqs": "https://data.qiime2.org/2024.10/tutorials/chimera/atacama-rep-seqs.qza",
   "source_metadata": "https://data.qiime2.org/2024.10/tutorials/atacama-soils/sample_metadata.tsv",
   "source_context": "QIIME 2 2024.10 Atacama soil tutorial and q2-vsearch chimera tutorial artifacts.",
-  "taxonomy_note": "No valid SILVA taxonomy artifact was found locally; taxonomy is not inferred.",
+  "source_resolution": {
+    "table": {
+      "path": "tmp\\atacama_qiime2_source\\atacama-table.qza",
+      "source": "local",
+      "sha256": "306a95685bf9687f61cdf0208a8e64c5e78d4ab461932ba3bccd2bd24c29e4bb"
+    },
+    "rep_seqs": {
+      "path": "tmp\\atacama_qiime2_source\\atacama-rep-seqs.qza",
+      "source": "local",
+      "sha256": "774570d071ba2e16886791c6b203d284d30258b13acf2792e39591768e0be02f"
+    },
+    "metadata": {
+      "path": "tmp\\atacama_qiime2_source\\sample_metadata.tsv",
+      "source": "local",
+      "sha256": "7cff810ad86a621ebc78a16b690255d839ea58e2622ad45a11a838d0f8c5b3bd"
+    }
+  },
+  "data_mode": "real_qiime2_artifacts_only_no_synthetic_counts",
+  "taxonomy_note": "Closest SILVA 138 515F/806R reference matches loaded from the local taxonomy cache.",
   "sample_count": 61,
   "feature_count_full_table": 401,
   "present_threshold_samples": 7,
@@ -13,5 +31,5 @@
   "abundance_asvs": 20,
   "tree_asvs": 12,
   "alignment_asvs": 8,
-  "scientific_note": "Taxonomy fields are left unassigned unless a real taxonomy artifact is present; no taxonomy is inferred."
+  "scientific_note": "Taxonomy labels come from a local nearest-reference cache when available; otherwise they are left unassigned. Labels are closest matches, not species proof."
 }

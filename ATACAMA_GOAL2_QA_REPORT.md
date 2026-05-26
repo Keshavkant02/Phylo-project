@@ -6,6 +6,7 @@
 - Removed the synthetic `Soil_ASV_A` / `Soil_ASV_B` teaching path from the student-facing notebook.
 - Removed visible form controls, live BLAST, neighbor joining, IQ-TREE, and bootstrap content from the student-facing notebook.
 - Added `build_atacama_soil_asv_phylogeny_colab.py` and `verify_atacama_soil_asv_phylogeny_colab.py`.
+- Added `classify_atacama_asvs_with_silva_static.py` and a cached SILVA nearest-reference taxonomy table.
 
 ## Data source
 
@@ -17,9 +18,30 @@ The generated cache uses the local QIIME 2 Atacama artifacts in `tmp/atacama_qii
 
 The generated table has 61 samples and 401 ASVs.
 
+The builder now validates source artifacts before reading them:
+
+- `.qza` files must be real zip archives and contain the expected QIIME payload (`feature-table.biom` or `dna-sequences.fasta`).
+- metadata must contain the required Atacama columns, including `average-soil-relative-humidity`.
+- the manifest records the local file path, source status, and SHA-256 hash for each input.
+- broken 404 placeholders and non-QIIME files are rejected; the builder stops instead of synthesizing counts.
+
+## Taxonomy cache
+
+QIIME 2, VSEARCH, and BLAST were not available in this Windows environment, so the pre-trained QIIME Naive Bayes classifier could not be run locally.
+
+To avoid fabricated labels, the taxonomy cache was computed by matching the Atacama representative ASV sequences against the official QIIME 2 2024.10 SILVA 138 SSURef NR99 515F/806R reference sequence and taxonomy artifacts:
+
+- `https://data.qiime2.org/2024.10/common/silva-138-99-seqs-515-806.qza`
+- `https://data.qiime2.org/2024.10/common/silva-138-99-tax-515-806.qza`
+
+The classifier script searched 313,734 SILVA reference sequences and wrote `soil_16s_class_cache/goal2_atacama_silva_static_taxonomy_assignments.csv`.
+Median query coverage was 100%; median identity was 100%; the lowest top-hit identity was 96.4758%.
+
+These labels are shown as closest SILVA reference matches, not species proof and not QIIME Naive Bayes taxonomy.
+
 ## Scientific honesty notes
 
-- No valid SILVA taxonomy artifact was present in the local source directory. The notebook therefore displays `Unassigned at genus level` instead of inventing taxonomy.
+- Taxonomic labels now come from the local SILVA nearest-reference cache. They are closest-reference labels only.
 - The 61-sample source table has only nine ASVs present in at least 10% of samples. The q-value section still tests the requested top 50 ASVs by prevalence, but the lollipop plot labels only significant ASVs that meet the 10% prevalence threshold.
 - BH-adjusted q-values are computed live from the loaded abundance table and metadata using CLR-transformed abundance, a 0.5 pseudo-count, and `statsmodels.stats.multitest.multipletests(method="fdr_bh")`.
 

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import io
 import json
 import math
 import tempfile
 import textwrap
+import urllib.request
 import zipfile
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -25,6 +27,30 @@ METADATA_PATH = SOURCE_DIR / "sample_metadata.tsv"
 TABLE_QZA = SOURCE_DIR / "atacama-table.qza"
 REP_SEQS_QZA = SOURCE_DIR / "atacama-rep-seqs.qza"
 
+SOURCE_URLS = {
+    "table": [
+        # docs.qiime2.org mirrors are reachable in more locked-down environments
+        # than data.qiime2.org, while serving the same tutorial artifact bytes here.
+        "https://docs.qiime2.org/2024.10/data/tutorials/chimera/atacama-table.qza",
+        "https://data.qiime2.org/2024.10/tutorials/chimera/atacama-table.qza",
+    ],
+    "rep_seqs": [
+        "https://docs.qiime2.org/2024.10/data/tutorials/chimera/atacama-rep-seqs.qza",
+        "https://data.qiime2.org/2024.10/tutorials/chimera/atacama-rep-seqs.qza",
+    ],
+    "metadata": [
+        # The Atacama tutorial metadata currently lives on data.qiime2.org.
+        # The builder keeps a local copy once fetched.
+        "https://data.qiime2.org/2024.10/tutorials/atacama-soils/sample_metadata.tsv",
+    ],
+}
+
+SOURCE_CANDIDATES = {
+    "table": [TABLE_QZA, SOURCE_DIR / "docs_atacama_table.qza"],
+    "rep_seqs": [REP_SEQS_QZA, SOURCE_DIR / "docs_atacama_rep_seqs.qza"],
+    "metadata": [METADATA_PATH],
+}
+
 PREFIX = "goal2_atacama"
 
 
@@ -38,6 +64,80 @@ def read_qza_file(qza_path: Path, suffix: str) -> bytes:
         if len(matches) != 1:
             raise ValueError(f"Expected one {suffix} in {qza_path}, found {matches}")
         return zf.read(matches[0])
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def qza_has_member(path: Path, suffix: str) -> bool:
+    if not path.exists() or path.stat().st_size < 100 or not zipfile.is_zipfile(path):
+        return False
+    try:
+        with zipfile.ZipFile(path) as zf:
+            return any(name.endswith(suffix) for name in zf.namelist())
+    except zipfile.BadZipFile:
+        return False
+
+
+def metadata_has_required_columns(path: Path) -> bool:
+    if not path.exists() or path.stat().st_size < 100:
+        return False
+    try:
+        with path.open("r", encoding="utf-8", newline="") as handle:
+            reader = csv.DictReader(handle, delimiter="\t")
+            fields = set(reader.fieldnames or [])
+        required = {"sample-id", "average-soil-relative-humidity", "vegetation", "percentcover"}
+        return required.issubset(fields)
+    except Exception:
+        return False
+
+
+def download_source(url: str, destination: Path) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    tmp = destination.with_suffix(destination.suffix + ".download")
+    with urllib.request.urlopen(url, timeout=120) as response:
+        tmp.write_bytes(response.read())
+    tmp.replace(destination)
+
+
+def resolve_source_file(kind: str, validator, destination: Path) -> tuple[Path, str]:
+    for candidate in SOURCE_CANDIDATES[kind]:
+        if validator(candidate):
+            return candidate, "local"
+
+    errors = []
+    for url in SOURCE_URLS[kind]:
+        try:
+            download_source(url, destination)
+            if validator(destination):
+                return destination, url
+            errors.append(f"{url} downloaded but failed validation")
+        except Exception as exc:
+            errors.append(f"{url}: {exc}")
+
+    searched = ", ".join(str(path) for path in SOURCE_CANDIDATES[kind])
+    raise FileNotFoundError(
+        f"Could not resolve a real QIIME 2 source artifact for {kind}. "
+        f"Searched local files: {searched}. Download attempts: {' | '.join(errors)}. "
+        "Place the real artifact in tmp/atacama_qiime2_source and rerun; this builder does not synthesize counts."
+    )
+
+
+def resolve_source_artifacts() -> tuple[Path, Path, Path, dict[str, dict[str, str]]]:
+    table_qza, table_source = resolve_source_file("table", lambda p: qza_has_member(p, "feature-table.biom"), TABLE_QZA)
+    rep_qza, rep_source = resolve_source_file("rep_seqs", lambda p: qza_has_member(p, "dna-sequences.fasta"), REP_SEQS_QZA)
+    metadata_path, metadata_source = resolve_source_file("metadata", metadata_has_required_columns, METADATA_PATH)
+    resolution = {
+        "table": {"path": str(table_qza.relative_to(ROOT)), "source": table_source, "sha256": sha256_file(table_qza)},
+        "rep_seqs": {"path": str(rep_qza.relative_to(ROOT)), "source": rep_source, "sha256": sha256_file(rep_qza)},
+        "metadata": {"path": str(metadata_path.relative_to(ROOT)), "source": metadata_source, "sha256": sha256_file(metadata_path)},
+    }
+    return metadata_path, table_qza, rep_qza, resolution
 
 
 def read_biom_table(qza_path: Path) -> tuple[list[str], list[str], np.ndarray]:
@@ -128,6 +228,30 @@ def parse_taxonomy_string(taxonomy: str) -> dict[str, str]:
 
 
 def read_taxonomy_if_available() -> tuple[dict[str, dict[str, str]], str]:
+    static_assignment_path = CACHE_DIR / f"{PREFIX}_silva_static_taxonomy_assignments.csv"
+    if static_assignment_path.exists() and static_assignment_path.stat().st_size > 100:
+        try:
+            with static_assignment_path.open("r", encoding="utf-8", newline="") as handle:
+                reader = csv.DictReader(handle)
+                taxonomy: dict[str, dict[str, str]] = {}
+                for row in reader:
+                    feature_id = row.get("qiime_feature_id") or ""
+                    if not feature_id:
+                        continue
+                    taxonomy[feature_id] = {
+                        "phylum": row.get("phylum") or "Unassigned",
+                        "family": row.get("family") or "",
+                        "genus": row.get("genus") or "",
+                        "closest_taxonomic_match": row.get("closest_taxonomic_match") or "Unassigned at genus level",
+                    }
+            if taxonomy:
+                return (
+                    taxonomy,
+                    "Closest SILVA 138 515F/806R reference matches loaded from the local taxonomy cache.",
+                )
+        except Exception:
+            pass
+
     candidates = [
         SOURCE_DIR / "taxonomy.tsv",
         SOURCE_DIR / "atacama-taxonomy.tsv",
@@ -190,14 +314,12 @@ class CachePaths:
 
 
 def build_cache() -> CachePaths:
-    for path in [METADATA_PATH, TABLE_QZA, REP_SEQS_QZA]:
-        if not path.exists() or path.stat().st_size < 100:
-            raise FileNotFoundError(f"Missing source artifact: {path}")
+    metadata_path, table_qza, rep_seqs_qza, source_resolution = resolve_source_artifacts()
 
     CACHE_DIR.mkdir(exist_ok=True)
-    metadata = read_metadata(METADATA_PATH)
-    feature_ids, sample_ids, table = read_biom_table(TABLE_QZA)
-    sequences_by_feature = read_fasta_from_qza(REP_SEQS_QZA)
+    metadata = read_metadata(metadata_path)
+    feature_ids, sample_ids, table = read_biom_table(table_qza)
+    sequences_by_feature = read_fasta_from_qza(rep_seqs_qza)
     taxonomy_by_feature, taxonomy_note = read_taxonomy_if_available()
 
     if len(sample_ids) != 61:
@@ -376,6 +498,8 @@ def build_cache() -> CachePaths:
         "source_rep_seqs": "https://data.qiime2.org/2024.10/tutorials/chimera/atacama-rep-seqs.qza",
         "source_metadata": "https://data.qiime2.org/2024.10/tutorials/atacama-soils/sample_metadata.tsv",
         "source_context": "QIIME 2 2024.10 Atacama soil tutorial and q2-vsearch chimera tutorial artifacts.",
+        "source_resolution": source_resolution,
+        "data_mode": "real_qiime2_artifacts_only_no_synthetic_counts",
         "taxonomy_note": taxonomy_note,
         "sample_count": len(sample_ids),
         "feature_count_full_table": len(feature_ids),
@@ -385,7 +509,7 @@ def build_cache() -> CachePaths:
         "abundance_asvs": len(top20_indices),
         "tree_asvs": len(top12_indices),
         "alignment_asvs": len(top8_indices),
-        "scientific_note": "Taxonomy fields are left unassigned unless a real taxonomy artifact is present; no taxonomy is inferred.",
+        "scientific_note": "Taxonomy labels come from a local nearest-reference cache when available; otherwise they are left unassigned. Labels are closest matches, not species proof.",
     }
     manifest_path = CACHE_DIR / f"{PREFIX}_manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
@@ -401,9 +525,14 @@ def build_cache() -> CachePaths:
 
             Source files used locally:
 
-            - `tmp/atacama_qiime2_source/atacama-table.qza`
-            - `tmp/atacama_qiime2_source/atacama-rep-seqs.qza`
-            - `tmp/atacama_qiime2_source/sample_metadata.tsv`
+            - a validated QIIME 2 feature table artifact containing `feature-table.biom`
+            - a validated QIIME 2 representative-sequence artifact containing `dna-sequences.fasta`
+            - Atacama sample metadata containing `average-soil-relative-humidity`
+
+            The builder can use already-local files in `tmp/atacama_qiime2_source/`, or fetch the
+            official QIIME tutorial artifacts when the network is available. Broken 404 files and
+            non-zip `.qza` placeholders are rejected. If real artifacts cannot be found, the builder
+            stops instead of synthesizing counts.
 
             The notebook uses fixed subsets for readability:
 
@@ -416,9 +545,11 @@ def build_cache() -> CachePaths:
             so the notebook uses the top 50 by prevalence for the BH correction lesson and treats the
             lowest-prevalence ASVs cautiously.
 
-            Taxonomy policy: if a real SILVA-style taxonomy artifact is available in the source directory, the
-            builder reads it. If not, taxonomy is shown as `Unassigned at genus level`; the builder does not
-            infer or invent taxonomic matches.
+            Taxonomy policy: the preferred student-facing cache reads `goal2_atacama_silva_static_taxonomy_assignments.csv`,
+            which assigns each Atacama ASV to its nearest SILVA 138 515F/806R reference sequence by local alignment.
+            This is not QIIME 2 Naive Bayes classification, and it is not species proof. If that cache is absent,
+            the builder can read a real QIIME/SILVA taxonomy artifact from the source directory; otherwise taxonomy
+            is shown as `Unassigned at genus level`.
             """
         ),
         encoding="utf-8",
@@ -736,7 +867,7 @@ def code_cell_dataset_summary() -> str:
             {"What": "ASVs available for tests", "Value": f"{len(q_asvs)}", "Why it matters": "Enough ASVs to ask which patterns track humidity or vegetation."},
             {"What": "Tree ASVs", "Value": f"{len(top12_asvs)}", "Why it matters": "Small enough for readable tip labels."},
             {"What": "Metadata used", "Value": "humidity, vegetation", "Why it matters": "These describe the soil environment."},
-            {"What": "Taxonomic names", "Value": manifest["taxonomy_note"], "Why it matters": "No names are guessed when source taxonomy is missing."},
+            {"What": "Taxonomic names", "Value": manifest["taxonomy_note"], "Why it matters": "Names are closest-reference labels, not proof of exact species."},
         ])
         display(styled_table(summary, width_px=940))
         '''
@@ -1210,7 +1341,9 @@ def code_cell_lollipop() -> str:
             ax.scatter(subset["Effect"], y, s=sizes, color=colors, alpha=0.88, edgecolor="white", linewidth=0.4, zorder=3)
             labels = []
             for _, row in subset.iterrows():
-                match = row["genus"] if isinstance(row["genus"], str) and row["genus"] else "unassigned"
+                match = row["genus"] if isinstance(row["genus"], str) and row["genus"] else row.get("closest_taxonomic_match", "unassigned")
+                if not isinstance(match, str) or not match:
+                    match = "unassigned"
                 labels.append(f"{short_label(row['ASV'])} ({match})")
             ax.set_yticks(y)
             ax.set_yticklabels(labels, fontsize=8)

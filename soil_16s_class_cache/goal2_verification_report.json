@@ -36,7 +36,7 @@
       12
     ],
     "tree_newick_endswith_semicolon": true,
-    "taxonomy_note": "No valid SILVA taxonomy artifact was found locally; taxonomy is not inferred."
+    "taxonomy_note": "Closest SILVA 138 515F/806R reference matches loaded from the local taxonomy cache."
   },
   "outputs": {
     "figure_files": [
