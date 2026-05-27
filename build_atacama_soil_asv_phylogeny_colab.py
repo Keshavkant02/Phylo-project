@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import csv
 import hashlib
 import io
@@ -53,10 +54,18 @@ SOURCE_CANDIDATES = {
 }
 
 PREFIX = "goal2_atacama"
+DARWIN_INTRO_IMAGE_PATH = CACHE_DIR / "darwin_tree_1837_intro.png"
 
 
 def dedent(text: str) -> str:
     return textwrap.dedent(text).strip() + "\n"
+
+
+def image_data_uri(path: Path, mime_type: str = "image/png") -> str:
+    if not path.exists() or path.stat().st_size < 100:
+        raise FileNotFoundError(f"Missing cached image for notebook embedding: {path}")
+    encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:{mime_type};base64,{encoded}"
 
 
 def read_qza_file(qza_path: Path, suffix: str) -> bytes:
@@ -1556,27 +1565,36 @@ def build_notebook(cache_paths: CachePaths) -> None:
     cells = []
     md = nbf.v4.new_markdown_cell
     code = nbf.v4.new_code_cell
+    darwin_intro_image_uri = image_data_uri(DARWIN_INTRO_IMAGE_PATH)
 
     cells.append(
         md(
             dedent(
-                """
+                f"""
                 # Reading phylogenetic trees
 
                 ## Section 1: What is a phylogenetic tree?
 
                 A phylogenetic tree is a scientific hypothesis about relatedness. It is a branching diagram of descent: who shares ancestry with whom.
 
+                The point of a tree is not to rank organisms from "simple" to "advanced." The point is to ask a sharper question: **which lineages share a more recent common ancestor?**
+
                 Darwin sketched one of the most famous early tree diagrams in 1837. The small words above it were "I think" - a useful reminder that a tree is an evidence-based idea, not a decorative picture.
 
                 <div style="display:flex; gap:18px; align-items:flex-start; margin:8px 0 10px 0;">
                   <div>
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/7/74/Darwin_Tree_1837.png" alt="Darwin I think tree sketch" width="330">
-                    <div style="font-size:11px; color:#666; line-height:1.3;">Darwin's Notebook B tree sketch, 1837. Public domain image via Wikimedia Commons; manuscript held by Cambridge University Library.</div>
+                    <img src="{darwin_intro_image_uri}" alt="Darwin I think tree sketch" width="390" style="max-width:100%; border:1px solid #e2e2e2;">
+                    <div style="font-size:11px; color:#666; line-height:1.3; max-width:390px;">Darwin's Notebook B tree sketch, 1837. Public domain image via Wikimedia Commons; manuscript held by Cambridge University Library. Embedded here from the local notebook cache so it displays without internet image loading.</div>
                   </div>
                   <div style="max-width:520px; font-size:14px; line-height:1.5;">
                     <b>Tree-reading rule for today:</b><br>
                     More closely related means sharing a more recent common ancestor.<br><br>
+                    This first section teaches three habits from tree-thinking research:
+                    <ol>
+                      <li>Read relationships by tracing branches to nodes.</li>
+                      <li>Do not read across the tips like a left-to-right list.</li>
+                      <li>Check what branch length means before interpreting distance.</li>
+                    </ol>
                     The parts of a tree are:
                     <ul>
                       <li><b>Tip</b>: an organism or sequence being compared.</li>
@@ -1588,7 +1606,7 @@ def build_notebook(cache_paths: CachePaths) -> None:
                   </div>
                 </div>
 
-                Tree-thinking approach adapted from Baum, Smith, and Donovan (2005), *The Tree-Thinking Challenge*, Science 310:979-980.
+                Tree-thinking approach adapted from Baum, Smith, and Donovan (2005), *The Tree-Thinking Challenge*, Science 310:979-980. The later DNA-to-tree flow is also guided by HHMI BioInteractive's phylogenetic-tree teaching materials.
                 """
             )
         )

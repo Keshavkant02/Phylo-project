@@ -82,8 +82,10 @@ def verify_static(nb) -> dict[str, object]:
 
     if "37 × 0.05 ≈ 2" not in markdown_source:
         raise AssertionError("Multiple-testing explanation must use 37 × 0.05 ≈ 2")
-    if "Darwin_Tree_1837.png" not in markdown_source:
-        raise AssertionError("Darwin tree sketch is missing from the tree-thinking introduction")
+    if "data:image/png;base64" not in markdown_source or "Darwin I think tree sketch" not in markdown_source:
+        raise AssertionError("Embedded Darwin tree sketch is missing from the tree-thinking introduction")
+    if "upload.wikimedia.org" in markdown_source:
+        raise AssertionError("Darwin tree image should be embedded, not loaded from a remote image URL")
     if "Tree-Thinking Challenge" not in markdown_source:
         raise AssertionError("Baum, Smith, and Donovan tree-thinking citation is missing")
     if "401 ASVs across 61 samples in the raw output; 37 ASVs across 46 samples after QC" not in markdown_source:
