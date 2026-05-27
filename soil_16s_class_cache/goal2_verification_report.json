@@ -5,18 +5,21 @@
     "code_cells": 14,
     "markdown_cells": 22,
     "sections": [
-      "Section 1: Story hook - Atacama Desert",
-      "Section 2: Tree-thinking intro (mammals only)",
-      "Section 3: Atacama dataset story",
-      "Section 4: What is an ASV?",
-      "Section 5: Load data and apply QC",
-      "Section 6: Alignment of representative ASV sequences",
-      "Section 7: Distance matrix",
-      "Section 8: UPGMA tree (the payoff)",
-      "Section 9: Relative abundance - what is actually in these samples?",
-      "Section 10: Alpha diversity",
-      "Section 11: BH-corrected association tests",
-      "Section 12: Final student report"
+      "Section 1: What is a phylogenetic tree?",
+      "Section 2: How to read relatedness",
+      "Section 3: The tip-order trap",
+      "Section 4: Node rotation and branch length",
+      "Section 5: From trees to real soil DNA",
+      "Section 6: Atacama dataset story",
+      "Section 7: What is a 16S ASV?",
+      "Section 8: Load data and apply QC",
+      "Section 9: Alignment of representative ASV sequences",
+      "Section 10: Distance matrix",
+      "Section 11: UPGMA tree (the payoff)",
+      "Section 12: Relative abundance - what is actually in these samples?",
+      "Section 13: Alpha diversity",
+      "Section 14: BH-corrected association tests",
+      "Section 15: Final student report"
     ]
   },
   "runtime": {
@@ -43,15 +46,16 @@
   },
   "outputs": {
     "figure_files": [
+      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell01_output00.png",
       "soil_16s_class_cache\\goal2_figure_checks\\figure_cell03_output00.png",
       "soil_16s_class_cache\\goal2_figure_checks\\figure_cell05_output00.png",
-      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell13_output00.png",
-      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell16_output00.png",
-      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell19_output00.png",
-      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell23_output00.png",
-      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell27_output00.png",
-      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell30_output00.png",
-      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell32_output00.png"
+      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell14_output00.png",
+      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell17_output00.png",
+      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell20_output00.png",
+      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell24_output00.png",
+      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell28_output00.png",
+      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell31_output00.png",
+      "soil_16s_class_cache\\goal2_figure_checks\\figure_cell33_output00.png"
     ],
     "styled_table_outputs": 4
   }

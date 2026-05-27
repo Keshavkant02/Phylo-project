@@ -896,7 +896,7 @@ def make_tree_helpers_cell() -> str:
             walk(node)
             return ys
 
-        def draw_tree(ax, node, leaf_order, label_map=None, x0=0.0, y_lookup=None, color="#333333", label_offset=0.08):
+        def draw_tree(ax, node, leaf_order, label_map=None, x0=0.0, y_lookup=None, color="#333333", label_offset=0.08, xlabel="branch length units"):
             if y_lookup is None:
                 y_lookup = assign_y(node, leaf_order)
             def walk(current, x):
@@ -917,11 +917,49 @@ def make_tree_helpers_cell() -> str:
             walk(node, x0)
             ax.set_ylim(-0.6, len(leaf_order) - 0.4)
             ax.set_yticks([])
-            ax.set_xlabel("branch length (DNA-difference units)")
+            ax.set_xlabel(xlabel)
             clean_axes(ax)
             ax.invert_yaxis()
             ax.margins(x=0.12)
             return ax
+        '''
+    )
+
+
+def code_cell_annotated_mammal_tree() -> str:
+    return dedent(
+        '''
+        fig, ax = plt.subplots(figsize=(10.5, 5.0))
+        label_map = {name: name.title() for name in ["dog", "wolf", "fox", "bear", "cat", "lion"]}
+        draw_tree(ax, mammal_tree(rotated=False), ["dog", "wolf", "fox", "bear", "cat", "lion"], label_map=label_map, xlabel="branch length units")
+
+        # Known coordinates from the teaching tree's branch lengths and leaf order.
+        dog_tip = (3.0, 0.0)
+        wolf_tip = (3.0, 1.0)
+        fox_tip = (3.0, 2.0)
+        dog_wolf_mrca = (2.0, 0.5)
+        root = (0.0, 2.5)
+
+        ax.scatter([dog_tip[0], wolf_tip[0], dog_wolf_mrca[0], root[0]], [dog_tip[1], wolf_tip[1], dog_wolf_mrca[1], root[1]],
+                   s=[36, 36, 58, 58], facecolor="white", edgecolor=OKABE_ITO["green"], linewidth=1.4, zorder=4)
+        ax.plot([3.28, 3.28], [0, 1], color=OKABE_ITO["green"], lw=1.1)
+        ax.plot([3.21, 3.28], [0, 0], color=OKABE_ITO["green"], lw=1.1)
+        ax.plot([3.21, 3.28], [1, 1], color=OKABE_ITO["green"], lw=1.1)
+
+        ax.annotate("Tip: an organism being compared", xy=dog_tip, xytext=(3.35, -0.35),
+                    arrowprops=dict(arrowstyle="-", color="#777777", lw=0.9), fontsize=9, color="#333333")
+        ax.annotate("Branch: one line of descent", xy=(1.25, 1.25), xytext=(0.55, 0.35),
+                    arrowprops=dict(arrowstyle="-", color="#777777", lw=0.9), fontsize=9, color="#333333")
+        ax.annotate("Internal node: inferred common ancestor", xy=dog_wolf_mrca, xytext=(0.55, 1.75),
+                    arrowprops=dict(arrowstyle="-", color="#777777", lw=0.9), fontsize=9, color="#333333")
+        ax.annotate("Sister taxa share an immediate ancestor", xy=(3.28, 0.5), xytext=(3.55, 0.72),
+                    arrowprops=dict(arrowstyle="-", color="#777777", lw=0.9), fontsize=9, color="#333333")
+        ax.annotate("MRCA of all six mammals", xy=root, xytext=(0.35, 3.15),
+                    arrowprops=dict(arrowstyle="-", color="#777777", lw=0.9), fontsize=9, color="#333333")
+        ax.set_title("A phylogenetic tree is read by tracing branches back to common ancestors.", loc="left")
+        add_caption(fig, "Relatedness is about common ancestry: dog and wolf share a more recent common ancestor with each other than either shares with fox.")
+        plt.tight_layout()
+        plt.show()
         '''
     )
 
@@ -937,11 +975,10 @@ def code_cell_tree_layouts() -> str:
         ]
         titles = ["Rectangular layout", "Ladderized layout", "Alternative tip order"]
         for ax, order, title in zip(axes, orders, titles):
-            draw_tree(ax, mammal_tree(rotated=False), order)
+            draw_tree(ax, mammal_tree(rotated=False), order, xlabel="branch length units")
             ax.set_title(title, loc="left")
-            ax.text(0.02, 1.02, "Which two tips are closest relatives?", transform=ax.transAxes, ha="left", va="bottom", fontsize=9, color="#4D4D4D")
         fig.suptitle("The same mammal tree can look different without changing relationships.", x=0.01, ha="left", fontsize=12)
-        add_caption(fig, "Answer: dog and wolf are sister taxa in all three layouts; reading left-to-right across tip order is not enough.")
+        add_caption(fig, "Answer: dog and wolf are sister taxa in all three layouts; reading left-to-right across tip order is not evidence of relatedness.")
         plt.tight_layout()
         plt.show()
         '''
@@ -952,17 +989,16 @@ def code_cell_rotation_diagram() -> str:
     return dedent(
         '''
         fig, axes = plt.subplots(1, 2, figsize=(12, 4.2), sharex=True)
-        draw_tree(axes[0], mammal_tree(rotated=False), ["dog", "wolf", "fox", "bear", "cat", "lion"])
+        draw_tree(axes[0], mammal_tree(rotated=False), ["dog", "wolf", "fox", "bear", "cat", "lion"], xlabel="branch length units")
         axes[0].set_title("Before node rotation", loc="left")
-        draw_tree(axes[1], mammal_tree(rotated=True), ["fox", "wolf", "dog", "lion", "cat", "bear"])
+        draw_tree(axes[1], mammal_tree(rotated=True), ["fox", "wolf", "dog", "lion", "cat", "bear"], xlabel="branch length units")
         axes[1].set_title("After rotating internal nodes", loc="left")
-        for ax in axes:
-            ax.scatter([1.0, 3.5], [0.5, 4.5], s=42, facecolor="white", edgecolor=OKABE_ITO["green"], zorder=3)
-            ax.text(0.03, 0.02, "Tips = living organisms\\nInternal nodes = inferred common ancestors", transform=ax.transAxes, ha="left", va="bottom", fontsize=9, color="#4D4D4D")
-        axes[0].annotate("MRCA of dog and wolf", xy=(1.0, 0.5), xytext=(1.7, 1.6), arrowprops=dict(arrowstyle="-", color="#666666"), fontsize=9)
-        axes[0].annotate("Sister groups", xy=(3.5, 4.5), xytext=(3.7, 3.6), arrowprops=dict(arrowstyle="-", color="#666666"), fontsize=9)
+        axes[0].scatter([2.0, 2.0], [0.5, 4.5], s=42, facecolor="white", edgecolor=OKABE_ITO["green"], zorder=3)
+        axes[1].scatter([2.0, 2.0], [1.5, 3.5], s=42, facecolor="white", edgecolor=OKABE_ITO["green"], zorder=3)
+        axes[0].annotate("MRCA of dog and wolf", xy=(2.0, 0.5), xytext=(2.25, 1.35), arrowprops=dict(arrowstyle="-", color="#666666"), fontsize=9)
+        axes[0].annotate("Cat and lion are sister taxa", xy=(2.0, 4.5), xytext=(2.45, 3.8), arrowprops=dict(arrowstyle="-", color="#666666"), fontsize=9)
         fig.suptitle("Rotating a node changes the drawing, not the ancestry hypothesis.", x=0.01, ha="left", fontsize=12)
-        add_caption(fig, "Branch length is read from the horizontal axis here; in this notebook it means DNA difference, not time.")
+        add_caption(fig, "Rotation changes the drawing, not the ancestry hypothesis. In the microbial tree later, branch length means DNA sequence difference.")
         plt.tight_layout()
         plt.show()
         '''
@@ -1525,39 +1561,64 @@ def build_notebook(cache_paths: CachePaths) -> None:
         md(
             dedent(
                 """
-                # Soil 16S phylogeny: Atacama ASVs
+                # Reading phylogenetic trees
 
-                ## Section 1: Story hook - Atacama Desert
+                ## Section 1: What is a phylogenetic tree?
 
-                The Atacama Desert is often described as the driest non-polar desert on Earth. Some places there have recorded zero rainfall across decades, yet microbial life persists in the soil.
+                A phylogenetic tree is a scientific hypothesis about relatedness. It is a branching diagram of descent: who shares ancestry with whom.
 
-                Today we ask one question from three angles: **Who lives there, where are they abundant, and how are they related?**
+                Darwin sketched one of the most famous early tree diagrams in 1837. The small words above it were "I think" - a useful reminder that a tree is an evidence-based idea, not a decorative picture.
+
+                <div style="display:flex; gap:18px; align-items:flex-start; margin:8px 0 10px 0;">
+                  <div>
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/7/74/Darwin_Tree_1837.png" alt="Darwin I think tree sketch" width="330">
+                    <div style="font-size:11px; color:#666; line-height:1.3;">Darwin's Notebook B tree sketch, 1837. Public domain image via Wikimedia Commons; manuscript held by Cambridge University Library.</div>
+                  </div>
+                  <div style="max-width:520px; font-size:14px; line-height:1.5;">
+                    <b>Tree-reading rule for today:</b><br>
+                    More closely related means sharing a more recent common ancestor.<br><br>
+                    The parts of a tree are:
+                    <ul>
+                      <li><b>Tip</b>: an organism or sequence being compared.</li>
+                      <li><b>Branch</b>: one line of descent.</li>
+                      <li><b>Internal node</b>: an inferred common ancestor.</li>
+                      <li><b>Sister taxa</b>: two tips or groups that share an immediate common ancestor.</li>
+                      <li><b>MRCA</b>: most recent common ancestor.</li>
+                    </ul>
+                  </div>
+                </div>
+
+                Tree-thinking approach adapted from Baum, Smith, and Donovan (2005), *The Tree-Thinking Challenge*, Science 310:979-980.
                 """
             )
         )
     )
+    cells.append(code(make_setup_cell(cache_files) + "\n" + make_tree_helpers_cell() + "\n" + code_cell_annotated_mammal_tree()))
     cells.append(
         md(
             dedent(
                 """
-                ## Section 2: Tree-thinking intro (mammals only)
+                ## Section 2: How to read relatedness
 
-                A phylogenetic tree is a hypothesis about relatedness. Following Baum, Smith, and Donovan's tree-thinking challenge, we will practice with familiar mammals before looking at microbes: dog, wolf, fox, bear, cat, and lion.
+                To compare two tips, trace each one backward along the branches. Where their paths meet is their most recent common ancestor.
 
-                First question: if the same tree is drawn three ways, do the closest relatives change?
+                If two tips share a more recent common ancestor with each other than with any other tip, they are closer relatives on that tree.
+
+                Think: In the mammal tree, are dog and wolf closer to each other, or is dog closer to fox?
                 """
             )
         )
     )
-    cells.append(code(make_setup_cell(cache_files) + "\n" + make_tree_helpers_cell()))
     cells.append(code(code_cell_tree_layouts()))
     cells.append(
         md(
             dedent(
                 """
-                In all three drawings, dog and wolf remain sister taxa because they share the most recent common ancestor with each other. Tip order alone can trick your eye; the branching pattern is what carries the evidence.
+                ## Section 3: The tip-order trap
 
-                Think: If a tree is rotated around an internal node, what should stay the same?
+                The answer stayed the same in all three layouts: dog and wolf are sister taxa. The tree can look different because drawings can be rearranged, but the branching pattern still carries the relationship.
+
+                A common mistake is to read across the page and assume nearby names are closest relatives. That is not enough. The better question is: **which tips share the most recent common ancestor?**
                 """
             )
         )
@@ -1567,7 +1628,13 @@ def build_notebook(cache_paths: CachePaths) -> None:
         md(
             dedent(
                 """
-                *A tip is a present-day organism or sequence. An internal node is an inferred common ancestor, not a sample whose DNA we directly measured. A sister group is a pair of lineages that share an immediate common ancestor; the MRCA is the most recent common ancestor for the taxa you are tracing.*
+                ## Section 4: Node rotation and branch length
+
+                A tree can be rotated around an internal node without changing the relationships. Rotation changes the drawing, not the ancestry hypothesis.
+
+                Branch length must be read from the tree's scale or caption. In the microbial tree later in this notebook, branch length means **DNA sequence difference in the 16S V4 region**, not time.
+
+                Careful tree-reading now gives us the skill we need for real DNA data: tips, branches, internal nodes, sister groups, and MRCA.
                 """
             )
         )
@@ -1576,11 +1643,26 @@ def build_notebook(cache_paths: CachePaths) -> None:
         md(
             dedent(
                 """
-                ## Section 3: Atacama dataset story
+                ## Section 5: From trees to real soil DNA
 
-                The rest of the notebook uses **real QIIME 2 Atacama soil 16S data** from the 10% tutorial subsample: `data.qiime2.org/2024.10/tutorials/atacama-soils/10p/`. Soil was sampled across a humidity and aridity gradient from 22 sites along the Yungay and Baquedano transects, with metadata recording whether vegetation was present near each sample.
+                Now that we know how to read a tree, we can use that skill on real biological data.
 
-                Twelve samples with fewer than 100 reads after DADA2 denoising were excluded - at that depth, individual ASV counts are unreliable. This is standard quality control in microbiome studies. 46 samples remain across the humidity gradient.
+                Scientists collected soil samples from the Atacama Desert in Chile, one of the driest places on Earth. Even there, microbial life persists in the soil.
+
+                The rest of this notebook asks: **which microbial DNA sequence types are present, what known groups do they most closely resemble, where are they abundant, and how are they related?**
+                """
+            )
+        )
+    )
+    cells.append(
+        md(
+            dedent(
+                """
+                ## Section 6: Atacama dataset story
+
+                This notebook uses **real QIIME 2 Atacama soil 16S data** from the 10% tutorial subsample: `data.qiime2.org/2024.10/tutorials/atacama-soils/10p/`. Soil was sampled across a humidity and aridity gradient from 22 sites along the Yungay and Baquedano transects, with metadata recording whether vegetation was present near each sample.
+
+                Twelve samples with fewer than 100 reads after DADA2 denoising were excluded - at that depth, individual sequence counts are unreliable. This is standard quality control in microbiome studies. 46 samples remain across the humidity gradient.
 
                 After QC, our humidity gradient is uneven - most surviving samples are from wetter sites, because drier sites yielded too little DNA to sequence reliably. This is the most common kind of sampling bias in extreme-environment microbiology.
 
@@ -1595,9 +1677,11 @@ def build_notebook(cache_paths: CachePaths) -> None:
         md(
             dedent(
                 """
-                ## Section 4: What is an ASV?
+                ## Section 7: What is a 16S ASV?
 
-                An **ASV** is a precise DNA sequence pattern found after cleaning 16S sequencing reads. An ASV is not automatically a species.
+                Scientists often study bacteria by sequencing a marker gene called **16S rRNA**. After the reads are cleaned by DADA2, the workflow identifies exact DNA sequence patterns called **ASVs**, or Amplicon Sequence Variants.
+
+                An ASV is not automatically a species. It is a precise 16S sequence pattern found in the samples.
 
                 Keep three ideas separate: **abundance** means how much of an ASV is in a sample; **taxonomic match** means what known group the sequence resembles in SILVA; **sequence relatedness** means how ASV sequences cluster in a tree.
 
@@ -1610,7 +1694,7 @@ def build_notebook(cache_paths: CachePaths) -> None:
         md(
             dedent(
                 """
-                ## Section 5: Load data and apply QC
+                ## Section 8: Load data and apply QC
 
                 The notebook starts from real Atacama tables embedded with the notebook so every student sees the same data when pressing Run all. We apply the same QC rules before any tree or statistics: keep samples with enough reads, then keep ASVs seen in at least three usable samples.
                 """
@@ -1631,7 +1715,7 @@ def build_notebook(cache_paths: CachePaths) -> None:
         md(
             dedent(
                 """
-                ## Section 6: Alignment of representative ASV sequences
+                ## Section 9: Alignment of representative ASV sequences
 
                 Alignment means putting DNA letters into comparable columns. Conserved columns are mostly the same across ASVs; variable columns are where sequence differences become visible.
                 """
@@ -1643,7 +1727,7 @@ def build_notebook(cache_paths: CachePaths) -> None:
         md(
             dedent(
                 """
-                *ASVs that look similar across the bright columns are more closely related. The phylogenetic tree (section 8) formalizes this intuition.*
+                *ASVs that look similar across the bright columns are more closely related. The phylogenetic tree (section 11) formalizes this intuition.*
                 """
             )
         )
@@ -1652,7 +1736,7 @@ def build_notebook(cache_paths: CachePaths) -> None:
         md(
             dedent(
                 """
-                ## Section 7: Distance matrix
+                ## Section 10: Distance matrix
 
                 Small distance means more similar DNA sequence. Here, each number compares two ASVs in the same aligned 16S marker region.
                 """
@@ -1673,7 +1757,7 @@ def build_notebook(cache_paths: CachePaths) -> None:
         md(
             dedent(
                 """
-                ## Section 8: UPGMA tree (the payoff)
+                ## Section 11: UPGMA tree (the payoff)
 
                 Tips are ASVs. Branch length shows sequence difference in this 252-bp V4 region. Branches that meet recently, with a short path between them, suggest closer sequence relatedness - our best evidence of evolutionary relatedness, but not proof of it.
                 """
@@ -1694,7 +1778,7 @@ def build_notebook(cache_paths: CachePaths) -> None:
         md(
             dedent(
                 """
-                ## Section 9: Relative abundance - what is actually in these samples?
+                ## Section 12: Relative abundance - what is actually in these samples?
 
                 The tree asks how sequences are related. Abundance asks a different question: which ASVs make up each soil sample, and does that composition change from drier to wetter soils?
                 """
@@ -1716,7 +1800,7 @@ def build_notebook(cache_paths: CachePaths) -> None:
         md(
             dedent(
                 """
-                ## Section 10: Alpha diversity
+                ## Section 13: Alpha diversity
 
                 Alpha diversity asks how diverse one sample is: how many ASV types are present, and how evenly distributed they are. We use observed ASVs for richness and Shannon diversity for richness plus evenness.
                 """
@@ -1738,9 +1822,11 @@ def build_notebook(cache_paths: CachePaths) -> None:
         md(
             dedent(
                 """
-                ## Section 11: BH-corrected association tests
+                ## Section 14: BH-corrected association tests
 
                 We test 37 ASVs to see if abundance changes with humidity. With a p < 0.05 cutoff, we would expect about 37 × 0.05 ≈ 2 false positives by random chance alone, even if nothing is truly associated. Benjamini-Hochberg (BH) correction adjusts for this. A q-value of 0.05 means we expect about 5% of discoveries below that threshold to be false alarms.
+
+                These q-values belong to abundance-versus-metadata tests. They are not tree branch support values, and they do not prove that an ASV is a species.
                 """
             )
         )
@@ -1752,35 +1838,26 @@ def build_notebook(cache_paths: CachePaths) -> None:
         md(
             dedent(
                 """
-                *BH q-values summarize abundance-versus-metadata tests. They are not tree branch support values, and they do not say an ASV is a proved species.*
-                """
-            )
-        )
-    )
-    cells.append(
-        md(
-            dedent(
-                """
-                ## Section 12: Final student report
+                ## Section 15: Final student report
 
                 Fill in the report using the section numbers named in each question.
 
-                1. Which 3 ASVs are most abundant in your samples? Refer to section 9 table.
+                1. Which 3 ASVs are most abundant in your samples? Refer to section 12 table.
                    [your answer]
 
-                2. Which ASVs are significantly associated with humidity? Refer to section 11 lollipop.
+                2. Which ASVs are significantly associated with humidity? Refer to section 14 lollipop.
                    [your answer]
 
-                3. Which ASVs are significantly associated with vegetation? Refer to section 11 lollipop.
+                3. Which ASVs are significantly associated with vegetation? Refer to section 14 lollipop.
                    [your answer]
 
-                4. What does alpha diversity suggest about humid versus arid samples? Refer to section 10.
+                4. What does alpha diversity suggest about humid versus arid samples? Refer to section 13.
                    [your answer]
 
-                5. In the UPGMA tree, which ASVs cluster closest together? Refer to section 8.
+                5. In the UPGMA tree, which ASVs cluster closest together? Refer to section 11.
                    [your answer]
 
-                6. Are closely related ASVs from section 8 also similar in abundance from section 9 or in humidity association from section 11?
+                6. Are closely related ASVs from section 11 also similar in abundance from section 12 or in humidity association from section 14?
                    [your answer]
 
                 7. Synthesis: An ASV can be (a) very abundant, (b) statistically associated with humidity, and (c) closely related to another ASV in the tree - and these are three different things. Explain in 2-3 sentences why these are three different ideas and why all three matter for understanding the soil microbiome.

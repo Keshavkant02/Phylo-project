@@ -35,18 +35,21 @@ FORBIDDEN = [
 ]
 
 EXPECTED_SECTIONS = [
-    "Section 1: Story hook - Atacama Desert",
-    "Section 2: Tree-thinking intro (mammals only)",
-    "Section 3: Atacama dataset story",
-    "Section 4: What is an ASV?",
-    "Section 5: Load data and apply QC",
-    "Section 6: Alignment of representative ASV sequences",
-    "Section 7: Distance matrix",
-    "Section 8: UPGMA tree (the payoff)",
-    "Section 9: Relative abundance - what is actually in these samples?",
-    "Section 10: Alpha diversity",
-    "Section 11: BH-corrected association tests",
-    "Section 12: Final student report",
+    "Section 1: What is a phylogenetic tree?",
+    "Section 2: How to read relatedness",
+    "Section 3: The tip-order trap",
+    "Section 4: Node rotation and branch length",
+    "Section 5: From trees to real soil DNA",
+    "Section 6: Atacama dataset story",
+    "Section 7: What is a 16S ASV?",
+    "Section 8: Load data and apply QC",
+    "Section 9: Alignment of representative ASV sequences",
+    "Section 10: Distance matrix",
+    "Section 11: UPGMA tree (the payoff)",
+    "Section 12: Relative abundance - what is actually in these samples?",
+    "Section 13: Alpha diversity",
+    "Section 14: BH-corrected association tests",
+    "Section 15: Final student report",
 ]
 
 
@@ -79,6 +82,10 @@ def verify_static(nb) -> dict[str, object]:
 
     if "37 × 0.05 ≈ 2" not in markdown_source:
         raise AssertionError("Multiple-testing explanation must use 37 × 0.05 ≈ 2")
+    if "Darwin_Tree_1837.png" not in markdown_source:
+        raise AssertionError("Darwin tree sketch is missing from the tree-thinking introduction")
+    if "Tree-Thinking Challenge" not in markdown_source:
+        raise AssertionError("Baum, Smith, and Donovan tree-thinking citation is missing")
     if "401 ASVs across 61 samples in the raw output; 37 ASVs across 46 samples after QC" not in markdown_source:
         raise AssertionError("Section 3 provenance banner is missing or has the wrong counts")
     if "Appendix: Full data provenance" not in markdown_source:
