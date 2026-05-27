@@ -27,21 +27,37 @@ The builder now validates source artifacts before reading them:
 
 ## Taxonomy cache
 
-QIIME 2, VSEARCH, and BLAST were not available in this Windows environment, so the pre-trained QIIME Naive Bayes classifier could not be run locally.
+The final taxonomy cache now uses the ideal QIIME 2 route rather than the interim nearest-reference fallback.
 
-To avoid fabricated labels, the taxonomy cache was computed by matching the Atacama representative ASV sequences against the official QIIME 2 2024.10 SILVA 138 SSURef NR99 515F/806R reference sequence and taxonomy artifacts:
+Run environment:
 
-- `https://data.qiime2.org/2024.10/common/silva-138-99-seqs-515-806.qza`
-- `https://data.qiime2.org/2024.10/common/silva-138-99-tax-515-806.qza`
+- WSL2 Ubuntu imported onto `E:\WSL\qiime2-jammy`
+- QIIME 2 Amplicon `2024.10.1`
+- SILVA 138 99% OTUs Naive Bayes classifier for scikit-learn `1.4.2`
+- classifier SHA256 verified as `c08a1aa4d56b449b511f7215543a43249ae9c54b57491428a7e5548a62613616`
 
-The classifier script searched 313,734 SILVA reference sequences and wrote `soil_16s_class_cache/goal2_atacama_silva_static_taxonomy_assignments.csv`.
-Median query coverage was 100%; median identity was 100%; the lowest top-hit identity was 96.4758%.
+Command used inside WSL:
 
-These labels are shown as closest SILVA reference matches, not species proof and not QIIME Naive Bayes taxonomy.
+```text
+qiime feature-classifier classify-sklearn \
+  --i-classifier downloads/silva-138-99-nb-classifier.qza \
+  --i-reads inputs/atacama-rep-seqs.qza \
+  --o-classification outputs/atacama-taxonomy.qza \
+  --p-n-jobs 1
+```
+
+Outputs:
+
+- `E:\qiime2_atacama_taxonomy\outputs\atacama-taxonomy.qza`
+- `E:\qiime2_atacama_taxonomy\outputs\exported-taxonomy\taxonomy.tsv`
+- local copied source: `tmp\atacama_qiime2_source\atacama-taxonomy.tsv`
+- published cache copy: `soil_16s_class_cache\goal2_atacama_qiime_taxonomy.tsv`
+
+The older nearest-reference SILVA cache remains in the repo as a documented fallback only. The builder now prefers the QIIME `atacama-taxonomy.tsv`.
 
 ## Scientific honesty notes
 
-- Taxonomic labels now come from the local SILVA nearest-reference cache. They are closest-reference labels only.
+- Taxonomic labels now come from QIIME 2 `feature-classifier classify-sklearn` output. They are still closest taxonomic matches, not species proof.
 - The 61-sample source table has only nine ASVs present in at least 10% of samples. The q-value section still tests the requested top 50 ASVs by prevalence, but the lollipop plot labels only significant ASVs that meet the 10% prevalence threshold.
 - BH-adjusted q-values are computed live from the loaded abundance table and metadata using CLR-transformed abundance, a 0.5 pseudo-count, and `statsmodels.stats.multitest.multipletests(method="fdr_bh")`.
 

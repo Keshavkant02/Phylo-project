@@ -25,8 +25,9 @@ Prevalence policy: the source artifact has only nine ASVs present in at least 10
 so the notebook uses the top 50 by prevalence for the BH correction lesson and treats the
 lowest-prevalence ASVs cautiously.
 
-Taxonomy policy: the preferred student-facing cache reads `goal2_atacama_silva_static_taxonomy_assignments.csv`,
-which assigns each Atacama ASV to its nearest SILVA 138 515F/806R reference sequence by local alignment.
-This is not QIIME 2 Naive Bayes classification, and it is not species proof. If that cache is absent,
-the builder can read a real QIIME/SILVA taxonomy artifact from the source directory; otherwise taxonomy
-is shown as `Unassigned at genus level`.
+Taxonomy policy: the preferred student-facing cache reads
+`goal2_atacama_qiime_taxonomy.tsv`, produced by QIIME 2 `feature-classifier classify-sklearn`
+with the SILVA 138 Naive Bayes classifier. The builder can also read local QIIME taxonomy
+artifacts from `tmp/atacama_qiime2_source/`. The older
+`goal2_atacama_silva_static_taxonomy_assignments.csv` nearest-reference cache is kept only as a
+documented fallback. Taxonomy remains a closest-match label, not species proof.

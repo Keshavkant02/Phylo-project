@@ -214,45 +214,34 @@ def shannon(counts: np.ndarray) -> float:
     return float(-(p * np.log(p)).sum())
 
 
+def clean_taxonomy_rank(value: str, *, rank: str) -> str:
+    value = value.strip()
+    if "__" in value:
+        value = value.split("__", 1)[1].strip()
+    if not value or value.lower() in {"uncultured", "unidentified", "unknown", "unassigned"}:
+        return ""
+    if rank == "genus" and (value.endswith("aceae") or value.endswith("ales")):
+        # QIIME/SILVA can repeat a family/order placeholder at genus level.
+        return ""
+    return value
+
+
 def parse_taxonomy_string(taxonomy: str) -> dict[str, str]:
     ranks = {"phylum": "", "family": "", "genus": ""}
     for chunk in taxonomy.split(";"):
         value = chunk.strip()
         if value.startswith("p__"):
-            ranks["phylum"] = value[3:].strip() or ""
+            ranks["phylum"] = clean_taxonomy_rank(value, rank="phylum")
         elif value.startswith("f__"):
-            ranks["family"] = value[3:].strip() or ""
+            ranks["family"] = clean_taxonomy_rank(value, rank="family")
         elif value.startswith("g__"):
-            ranks["genus"] = value[3:].strip() or ""
+            ranks["genus"] = clean_taxonomy_rank(value, rank="genus")
     return ranks
 
 
 def read_taxonomy_if_available() -> tuple[dict[str, dict[str, str]], str]:
-    static_assignment_path = CACHE_DIR / f"{PREFIX}_silva_static_taxonomy_assignments.csv"
-    if static_assignment_path.exists() and static_assignment_path.stat().st_size > 100:
-        try:
-            with static_assignment_path.open("r", encoding="utf-8", newline="") as handle:
-                reader = csv.DictReader(handle)
-                taxonomy: dict[str, dict[str, str]] = {}
-                for row in reader:
-                    feature_id = row.get("qiime_feature_id") or ""
-                    if not feature_id:
-                        continue
-                    taxonomy[feature_id] = {
-                        "phylum": row.get("phylum") or "Unassigned",
-                        "family": row.get("family") or "",
-                        "genus": row.get("genus") or "",
-                        "closest_taxonomic_match": row.get("closest_taxonomic_match") or "Unassigned at genus level",
-                    }
-            if taxonomy:
-                return (
-                    taxonomy,
-                    "Closest SILVA 138 515F/806R reference matches loaded from the local taxonomy cache.",
-                )
-        except Exception:
-            pass
-
     candidates = [
+        CACHE_DIR / f"{PREFIX}_qiime_taxonomy.tsv",
         SOURCE_DIR / "taxonomy.tsv",
         SOURCE_DIR / "atacama-taxonomy.tsv",
         SOURCE_DIR / "atacama-taxonomy.qza",
@@ -292,6 +281,30 @@ def read_taxonomy_if_available() -> tuple[dict[str, dict[str, str]], str]:
                 return taxonomy, f"Taxonomy loaded from {path.name}."
         except Exception:
             continue
+
+    static_assignment_path = CACHE_DIR / f"{PREFIX}_silva_static_taxonomy_assignments.csv"
+    if static_assignment_path.exists() and static_assignment_path.stat().st_size > 100:
+        try:
+            with static_assignment_path.open("r", encoding="utf-8", newline="") as handle:
+                reader = csv.DictReader(handle)
+                taxonomy: dict[str, dict[str, str]] = {}
+                for row in reader:
+                    feature_id = row.get("qiime_feature_id") or ""
+                    if not feature_id:
+                        continue
+                    taxonomy[feature_id] = {
+                        "phylum": row.get("phylum") or "Unassigned",
+                        "family": row.get("family") or "",
+                        "genus": row.get("genus") or "",
+                        "closest_taxonomic_match": row.get("closest_taxonomic_match") or "Unassigned at genus level",
+                    }
+            if taxonomy:
+                return (
+                    taxonomy,
+                    "Fallback closest SILVA 138 515F/806R reference matches loaded from the local taxonomy cache.",
+                )
+        except Exception:
+            pass
     return {}, "No valid SILVA taxonomy artifact was found locally; taxonomy is not inferred."
 
 
@@ -509,7 +522,7 @@ def build_cache() -> CachePaths:
         "abundance_asvs": len(top20_indices),
         "tree_asvs": len(top12_indices),
         "alignment_asvs": len(top8_indices),
-        "scientific_note": "Taxonomy labels come from a local nearest-reference cache when available; otherwise they are left unassigned. Labels are closest matches, not species proof.",
+        "scientific_note": "Taxonomy labels come from a real QIIME/SILVA taxonomy artifact when available, with the nearest-reference cache used only as a fallback. Labels are closest matches, not species proof.",
     }
     manifest_path = CACHE_DIR / f"{PREFIX}_manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
@@ -545,11 +558,12 @@ def build_cache() -> CachePaths:
             so the notebook uses the top 50 by prevalence for the BH correction lesson and treats the
             lowest-prevalence ASVs cautiously.
 
-            Taxonomy policy: the preferred student-facing cache reads `goal2_atacama_silva_static_taxonomy_assignments.csv`,
-            which assigns each Atacama ASV to its nearest SILVA 138 515F/806R reference sequence by local alignment.
-            This is not QIIME 2 Naive Bayes classification, and it is not species proof. If that cache is absent,
-            the builder can read a real QIIME/SILVA taxonomy artifact from the source directory; otherwise taxonomy
-            is shown as `Unassigned at genus level`.
+            Taxonomy policy: the preferred student-facing cache reads
+            `goal2_atacama_qiime_taxonomy.tsv`, produced by QIIME 2 `feature-classifier classify-sklearn`
+            with the SILVA 138 Naive Bayes classifier. The builder can also read local QIIME taxonomy
+            artifacts from `tmp/atacama_qiime2_source/`. The older
+            `goal2_atacama_silva_static_taxonomy_assignments.csv` nearest-reference cache is kept only as a
+            documented fallback. Taxonomy remains a closest-match label, not species proof.
             """
         ),
         encoding="utf-8",

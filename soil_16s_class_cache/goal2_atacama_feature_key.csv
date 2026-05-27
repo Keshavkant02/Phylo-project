@@ -1,48 +1,48 @@
 asv,qiime_feature_id,total_reads,prevalence_samples,mean_relative_abundance_percent,max_relative_abundance_percent,sequence_length,closest_taxonomic_match,phylum,family,genus,in_q_value_top50,in_abundance_top20,in_tree_top12,in_alignment_top8
-Atacama_ASV_01,409faa5f5353e543bf6d99125c7c0e83,1217,9,6.29134,100.0,227,wb1-P19,Proteobacteria,Nitrosococcaceae,wb1-P19,True,True,True,True
+Atacama_ASV_01,409faa5f5353e543bf6d99125c7c0e83,1217,9,6.29134,100.0,227,Unassigned at genus level,Proteobacteria,,,True,True,True,True
 Atacama_ASV_02,a36b38f754f6abd278aeb9dbc7696343,420,9,2.75176,50.0,227,Rubrobacter,Actinobacteriota,Rubrobacteriaceae,Rubrobacter,True,True,True,True
 Atacama_ASV_03,a7b877ae6d2f079a15b6b192a4425620,456,8,2.12492,61.50538,227,Nitriliruptoraceae,Actinobacteriota,Nitriliruptoraceae,,True,True,True,True
-Atacama_ASV_04,ffd60d684f32e6fd5b47fe90095f9d34,616,6,2.07436,51.94274,227,Actinobacteriota,Actinobacteriota,,,True,True,True,True
+Atacama_ASV_04,ffd60d684f32e6fd5b47fe90095f9d34,616,6,2.07436,51.94274,227,Unassigned at genus level,Actinobacteriota,,,True,True,True,True
 Atacama_ASV_05,c434ee7f909f455fc2109ef1f741a2d4,576,2,2.06344,64.96945,227,Crossiella,Actinobacteriota,Pseudonocardiaceae,Crossiella,True,True,True,True
 Atacama_ASV_06,9279403ab31c9b2574b09cef10f08586,377,2,2.04891,65.30612,227,Ammoniphilus,Firmicutes,Paenibacillaceae,Ammoniphilus,True,True,True,True
 Atacama_ASV_07,ddbc32632c9632d1dd746f28721f3a9f,262,4,1.99313,61.70213,227,Ammoniphilus,Firmicutes,Paenibacillaceae,Ammoniphilus,True,True,True,True
-Atacama_ASV_08,1237d5925a7176fced9dda961a86c684,571,6,1.82504,71.04851,227,wb1-P19,Proteobacteria,Nitrosococcaceae,wb1-P19,True,True,True,True
-Atacama_ASV_09,ac0c1f67c014a92423a4aa57ab28a535,1,1,1.63934,100.0,227,Proteobacteria,Proteobacteria,,,False,True,True,False
-Atacama_ASV_10,d6d5efaea4b864401cf971d7d3de63d7,1,1,1.63934,100.0,227,Acidobacteriota,Acidobacteriota,,,False,True,True,False
+Atacama_ASV_08,1237d5925a7176fced9dda961a86c684,571,6,1.82504,71.04851,227,Unassigned at genus level,Proteobacteria,,,True,True,True,True
+Atacama_ASV_09,ac0c1f67c014a92423a4aa57ab28a535,1,1,1.63934,100.0,227,Unassigned at genus level,Proteobacteria,,,False,True,True,False
+Atacama_ASV_10,d6d5efaea4b864401cf971d7d3de63d7,1,1,1.63934,100.0,227,Unassigned at genus level,Acidobacteriota,,,False,True,True,False
 Atacama_ASV_11,e54fca6f1a506bfe90b8506cfa87ad1b,1,1,1.63934,100.0,227,Rubrobacter,Actinobacteriota,Rubrobacteriaceae,Rubrobacter,False,True,True,False
 Atacama_ASV_12,1694836fc379411d2b9aa087d68d571b,562,4,1.62689,31.37652,227,wb1-P19,Proteobacteria,Nitrosococcaceae,wb1-P19,True,True,True,False
 Atacama_ASV_13,ef3fdbe1dcde754d91130cde6a4b4d61,397,10,1.55643,45.94595,227,Gemmatimonadaceae,Gemmatimonadota,Gemmatimonadaceae,,True,True,False,False
-Atacama_ASV_14,a7fb4b2b79be3e851a32cc21d3a63e51,262,3,1.36676,60.88435,227,Actinobacteriota,Actinobacteriota,,,True,True,False,False
+Atacama_ASV_14,a7fb4b2b79be3e851a32cc21d3a63e51,262,3,1.36676,60.88435,227,Unassigned at genus level,Actinobacteriota,,,True,True,False,False
 Atacama_ASV_15,96cbccca68ad868a78bb0604e4a41cf5,376,7,1.36095,34.83709,227,wb1-P19,Proteobacteria,Nitrosococcaceae,wb1-P19,True,True,False,False
 Atacama_ASV_16,11f7b172e09b77715d3bb2175a40b409,302,6,1.19847,28.14815,227,wb1-P19,Proteobacteria,Nitrosococcaceae,wb1-P19,True,True,False,False
-Atacama_ASV_17,29b4b85879d0c908835a2c655cd82b76,70,4,1.18032,51.16279,227,Bacillus,Firmicutes,Bacillaceae,Bacillus,True,True,False,False
-Atacama_ASV_18,5987b97497dc2c6f7c3d690526ea34b0,328,3,1.01583,40.95064,227,wb1-P19,Proteobacteria,Nitrosococcaceae,wb1-P19,True,True,False,False
+Atacama_ASV_17,29b4b85879d0c908835a2c655cd82b76,70,4,1.18032,51.16279,227,Falsibacillus,Firmicutes,Bacillaceae,Falsibacillus,True,True,False,False
+Atacama_ASV_18,5987b97497dc2c6f7c3d690526ea34b0,328,3,1.01583,40.95064,227,Unassigned at genus level,Proteobacteria,,,True,True,False,False
 Atacama_ASV_19,e043936a0f7ec9177eaaf79e4bbe8631,213,3,0.93844,43.96783,227,wb1-P19,Proteobacteria,Nitrosococcaceae,wb1-P19,True,True,False,False
 Atacama_ASV_20,dbaaec51eeca49cb19d683ec4ed2ea7a,182,1,0.81743,49.86301,227,Candidatus_Udaeobacter,Verrucomicrobiota,Chthoniobacteraceae,Candidatus_Udaeobacter,False,True,False,False
 Atacama_ASV_21,f6c10a04d57159c0d64d6bc30c677471,189,8,0.80856,10.11561,227,Sphingomonas,Proteobacteria,Sphingomonadaceae,Sphingomonas,True,False,False,False
 Atacama_ASV_22,c471b243ae160f3817bd392932447fce,123,3,0.79621,31.05263,227,Rubrobacter,Actinobacteriota,Rubrobacteriaceae,Rubrobacter,True,False,False,False
 Atacama_ASV_23,be2339ed842e86a8cbdb994dc01e84ec,85,2,0.78585,32.96703,227,Rubrobacter,Actinobacteriota,Rubrobacteriaceae,Rubrobacter,True,False,False,False
-Atacama_ASV_24,dc8a2f47b3d1dc2e1f5f805891976b29,143,10,0.74614,14.98127,227,Ralstonia,Proteobacteria,Burkholderiaceae,Ralstonia,True,False,False,False
+Atacama_ASV_24,dc8a2f47b3d1dc2e1f5f805891976b29,143,10,0.74614,14.98127,227,Unassigned at genus level,Proteobacteria,,,True,False,False,False
 Atacama_ASV_25,c6a6705874a49360a01c2b3fd39fe900,206,3,0.69072,16.81574,227,67-14,Actinobacteriota,67-14,67-14,True,False,False,False
-Atacama_ASV_26,6b780e361cfc5f06def718518324bdcb,161,11,0.68484,10.43956,227,Arthrobacter,Actinobacteriota,Micrococcaceae,Arthrobacter,True,False,False,False
+Atacama_ASV_26,6b780e361cfc5f06def718518324bdcb,161,11,0.68484,10.43956,227,Micrococcaceae,Actinobacteriota,Micrococcaceae,,True,False,False,False
 Atacama_ASV_27,86b4c22b3bcd88d95151325f471af4c4,31,2,0.6829,38.29787,227,wb1-P19,Proteobacteria,Nitrosococcaceae,wb1-P19,True,False,False,False
 Atacama_ASV_28,c58d52926eceee08f400001aaf5dabb1,101,2,0.67801,25.78947,227,67-14,Actinobacteriota,67-14,67-14,True,False,False,False
-Atacama_ASV_29,476ca54c0b962e7b62e01fb0fc01890f,143,4,0.67663,14.66165,227,67-14,Actinobacteriota,67-14,67-14,True,False,False,False
-Atacama_ASV_30,5eee6273221f15d4e0cdc2c033f0dd72,155,5,0.65872,11.82796,227,Actinobacteriota,Actinobacteriota,,,True,False,False,False
+Atacama_ASV_29,476ca54c0b962e7b62e01fb0fc01890f,143,4,0.67663,14.66165,227,Unassigned at genus level,Actinobacteriota,,,True,False,False,False
+Atacama_ASV_30,5eee6273221f15d4e0cdc2c033f0dd72,155,5,0.65872,11.82796,227,Unassigned at genus level,Actinobacteriota,,,True,False,False,False
 Atacama_ASV_31,6e4d034e4b967b745639f825dc73ebe6,154,5,0.65519,12.27545,227,0319-7L14,Actinobacteriota,0319-7L14,0319-7L14,True,False,False,False
 Atacama_ASV_32,352875c83f4adf659984d683666d2038,196,4,0.63071,11.2782,227,Gaiella,Actinobacteriota,Gaiellaceae,Gaiella,True,False,False,False
-Atacama_ASV_33,6466aa53adc18d74c66bfebb47d6c1fb,71,2,0.57708,29.12088,227,Bacillus,Firmicutes,Bacillaceae,Bacillus,True,False,False,False
+Atacama_ASV_33,6466aa53adc18d74c66bfebb47d6c1fb,71,2,0.57708,29.12088,227,Planococcaceae,Firmicutes,Planococcaceae,,True,False,False,False
 Atacama_ASV_34,f9c93ccfdaccc1f8111dea02735ff80a,138,2,0.54616,25.0,227,Gaiella,Actinobacteriota,Gaiellaceae,Gaiella,True,False,False,False
-Atacama_ASV_35,5c78314ff92e6fec9aa07acc1fa0dc24,107,3,0.50765,11.2782,227,Bradyrhizobium,Proteobacteria,Xanthobacteraceae,Bradyrhizobium,True,False,False,False
+Atacama_ASV_35,5c78314ff92e6fec9aa07acc1fa0dc24,107,3,0.50765,11.2782,227,Xanthobacteraceae,Proteobacteria,Xanthobacteraceae,,True,False,False,False
 Atacama_ASV_36,9b93b0042b0a3fba92a57224122cea67,111,4,0.5,16.41791,227,Mycobacterium,Actinobacteriota,Mycobacteriaceae,Mycobacterium,True,False,False,False
 Atacama_ASV_37,f2e9c4d09183997ce7cdab5a93686b4c,104,4,0.44687,11.47959,227,Gemmatimonadaceae,Gemmatimonadota,Gemmatimonadaceae,,True,False,False,False
 Atacama_ASV_38,a56b903521b8ab33a7878b35582803a8,65,7,0.43646,8.64865,227,Candidatus_Nitrososphaera,Crenarchaeota,Nitrososphaeraceae,Candidatus_Nitrososphaera,True,False,False,False
 Atacama_ASV_39,b65d67bf1cf90c3fcd9868edc2f35454,138,3,0.38855,9.91903,227,MB-A2-108,Actinobacteriota,MB-A2-108,MB-A2-108,True,False,False,False
 Atacama_ASV_40,e7e19b672a061e119437a7cf815db964,91,3,0.37162,10.69364,227,RB41,Acidobacteriota,Pyrinomonadaceae,RB41,True,False,False,False
 Atacama_ASV_41,0013c1743927ee19a962b903b8990896,81,3,0.31961,9.56341,227,Candidatus_Udaeobacter,Verrucomicrobiota,Chthoniobacteraceae,Candidatus_Udaeobacter,True,False,False,False
-Atacama_ASV_42,8d0ef18ec87e81bbb286975b9b0cb5b6,84,4,0.29026,5.38462,227,Actinobacteriota,Actinobacteriota,,,True,False,False,False
-Atacama_ASV_43,664c5245b6cbfea323173cf7123c585c,72,5,0.27746,4.78589,227,Acidobacteriota,Acidobacteriota,,,True,False,False,False
-Atacama_ASV_44,6c498e15165bcab4442f6e99135bcbb7,76,3,0.25886,8.52535,227,wb1-P19,Proteobacteria,Nitrosococcaceae,wb1-P19,True,False,False,False
+Atacama_ASV_42,8d0ef18ec87e81bbb286975b9b0cb5b6,84,4,0.29026,5.38462,227,Unassigned at genus level,Actinobacteriota,,,True,False,False,False
+Atacama_ASV_43,664c5245b6cbfea323173cf7123c585c,72,5,0.27746,4.78589,227,Gemmatimonadaceae,Gemmatimonadota,Gemmatimonadaceae,,True,False,False,False
+Atacama_ASV_44,6c498e15165bcab4442f6e99135bcbb7,76,3,0.25886,8.52535,227,Unassigned at genus level,Proteobacteria,,,True,False,False,False
 Atacama_ASV_45,fad7959733a200344fe5a2a9f6252f81,49,3,0.23661,5.99251,227,Blastococcus,Actinobacteriota,Geodermatophilaceae,Blastococcus,True,False,False,False
 Atacama_ASV_46,e64d870f57288ad0e8bd4da2d353bf90,38,4,0.21739,4.34783,228,TK10,Chloroflexi,TK10,TK10,True,False,False,False
 Atacama_ASV_47,88d17d59e9681436cc60ba2ef049d35d,49,3,0.19049,4.53401,227,Nitrososphaeraceae,Crenarchaeota,Nitrososphaeraceae,,True,False,False,False
@@ -50,6 +50,6 @@ Atacama_ASV_48,36d3b99cbc044e1531dc21fb94159f72,37,3,0.1644,4.7619,227,Nitrososp
 Atacama_ASV_49,c524ac41b7dc1cf61adcd13484ccc932,53,3,0.1644,4.6,227,67-14,Actinobacteriota,67-14,67-14,True,False,False,False
 Atacama_ASV_50,42db26c2c81f1d89d295d759f0490177,40,3,0.15094,4.0,227,wb1-P19,Proteobacteria,Nitrosococcaceae,wb1-P19,True,False,False,False
 Atacama_ASV_51,79fceab4210680594e1d67908b3f916d,47,4,0.1451,3.22581,227,Nitrososphaeraceae,Crenarchaeota,Nitrososphaeraceae,,True,False,False,False
-Atacama_ASV_52,4c8ff0ea98d2c0ebb486e33bd96c61f9,31,4,0.11389,2.7897,227,Povalibacter,Proteobacteria,Steroidobacteraceae,Povalibacter,True,False,False,False
+Atacama_ASV_52,4c8ff0ea98d2c0ebb486e33bd96c61f9,31,4,0.11389,2.7897,227,Steroidobacteraceae,Proteobacteria,Steroidobacteraceae,,True,False,False,False
 Atacama_ASV_53,4f52ef70709f6baf6ff9e9409f25d251,20,3,0.1024,2.96296,227,Gemmatimonadaceae,Gemmatimonadota,Gemmatimonadaceae,,True,False,False,False
 Atacama_ASV_54,89cb1ddf89dcf11d86f725dbcaa9a5ce,18,3,0.06127,1.6,227,Reyranella,Proteobacteria,Reyranellaceae,Reyranella,True,False,False,False

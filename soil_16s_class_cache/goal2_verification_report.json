@@ -36,7 +36,7 @@
       12
     ],
     "tree_newick_endswith_semicolon": true,
-    "taxonomy_note": "Closest SILVA 138 515F/806R reference matches loaded from the local taxonomy cache."
+    "taxonomy_note": "Taxonomy loaded from goal2_atacama_qiime_taxonomy.tsv."
   },
   "outputs": {
     "figure_files": [
