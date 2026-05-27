@@ -5,6 +5,7 @@ import hashlib
 import io
 import json
 import math
+import re
 import tempfile
 import textwrap
 import urllib.request
@@ -218,25 +219,45 @@ def clean_taxonomy_rank(value: str, *, rank: str) -> str:
     value = value.strip()
     if "__" in value:
         value = value.split("__", 1)[1].strip()
-    if not value or value.lower() in {"uncultured", "unidentified", "unknown", "unassigned"}:
+    lowered = value.lower()
+    blocked = {"uncultured", "unidentified", "unknown", "unassigned", "incertae_sedis", "incertae sedis"}
+    if not value or lowered in blocked:
+        return ""
+    if "uncultured" in lowered or "unassigned" in lowered:
         return ""
     if rank == "genus" and (value.endswith("aceae") or value.endswith("ales")):
         # QIIME/SILVA can repeat a family/order placeholder at genus level.
+        return ""
+    if re.match(r"^[A-Za-z]*\d+[A-Za-z0-9-]*$", value) or re.match(r"^\d", value):
+        # Codes such as wb1-P19 or 67-14 are honest taxonomy strings, but not useful names.
         return ""
     return value
 
 
 def parse_taxonomy_string(taxonomy: str) -> dict[str, str]:
-    ranks = {"phylum": "", "family": "", "genus": ""}
+    ranks = {"phylum": "", "class": "", "order": "", "family": "", "genus": ""}
     for chunk in taxonomy.split(";"):
         value = chunk.strip()
         if value.startswith("p__"):
             ranks["phylum"] = clean_taxonomy_rank(value, rank="phylum")
+        elif value.startswith("c__"):
+            ranks["class"] = clean_taxonomy_rank(value, rank="class")
+        elif value.startswith("o__"):
+            ranks["order"] = clean_taxonomy_rank(value, rank="order")
         elif value.startswith("f__"):
             ranks["family"] = clean_taxonomy_rank(value, rank="family")
         elif value.startswith("g__"):
             ranks["genus"] = clean_taxonomy_rank(value, rank="genus")
     return ranks
+
+
+def taxonomy_display_label(ranks: dict[str, str]) -> str:
+    if ranks.get("genus"):
+        return ranks["genus"]
+    for rank in ("family", "order", "class", "phylum"):
+        if ranks.get(rank):
+            return f"{ranks[rank]} ({rank})"
+    return "Unassigned"
 
 
 def read_taxonomy_if_available() -> tuple[dict[str, dict[str, str]], str]:
@@ -270,9 +291,11 @@ def read_taxonomy_if_available() -> tuple[dict[str, dict[str, str]], str]:
                 if not feature_id:
                     continue
                 ranks = parse_taxonomy_string(tax)
-                match = ranks["genus"] or ranks["family"] or "Unassigned at genus level"
+                match = taxonomy_display_label(ranks)
                 taxonomy[feature_id] = {
                     "phylum": ranks["phylum"] or "Unassigned",
+                    "class": ranks["class"],
+                    "order": ranks["order"],
                     "family": ranks["family"] or "",
                     "genus": ranks["genus"] or "",
                     "closest_taxonomic_match": match,
@@ -294,9 +317,11 @@ def read_taxonomy_if_available() -> tuple[dict[str, dict[str, str]], str]:
                         continue
                     taxonomy[feature_id] = {
                         "phylum": row.get("phylum") or "Unassigned",
+                        "class": row.get("class") or "",
+                        "order": row.get("order") or "",
                         "family": row.get("family") or "",
                         "genus": row.get("genus") or "",
-                        "closest_taxonomic_match": row.get("closest_taxonomic_match") or "Unassigned at genus level",
+                        "closest_taxonomic_match": row.get("closest_taxonomic_match") or "Unassigned",
                     }
             if taxonomy:
                 return (
@@ -317,11 +342,11 @@ def format_float(value: float, digits: int = 5) -> float:
 @dataclass(frozen=True)
 class CachePaths:
     metadata: Path
-    counts_top50: Path
+    counts_retained: Path
     relative_top20: Path
     alpha: Path
     feature_key: Path
-    sequences: Path
+    sequences_retained: Path
     manifest: Path
     readme: Path
 
@@ -331,16 +356,40 @@ def build_cache() -> CachePaths:
 
     CACHE_DIR.mkdir(exist_ok=True)
     metadata = read_metadata(metadata_path)
-    feature_ids, sample_ids, table = read_biom_table(table_qza)
+    feature_ids, raw_sample_ids, raw_table = read_biom_table(table_qza)
     sequences_by_feature = read_fasta_from_qza(rep_seqs_qza)
     taxonomy_by_feature, taxonomy_note = read_taxonomy_if_available()
 
-    if len(sample_ids) != 61:
-        raise ValueError(f"Goal 2 expects 61 samples; found {len(sample_ids)}")
-    missing_metadata = sorted(set(sample_ids) - set(metadata))
+    if len(raw_sample_ids) != 61:
+        raise ValueError(f"Goal 2 expects 61 raw samples; found {len(raw_sample_ids)}")
+    missing_metadata = sorted(set(raw_sample_ids) - set(metadata))
     if missing_metadata:
         raise ValueError(f"Feature table samples missing metadata: {missing_metadata[:5]}")
 
+    raw_sample_totals = raw_table.sum(axis=0)
+    qc_sample_indices: list[int] = []
+    dropped_zero_reads = 0
+    dropped_low_reads_nonzero = 0
+    dropped_missing_metadata = 0
+    for sample_pos, sample_id in enumerate(raw_sample_ids):
+        row = metadata[sample_id]
+        humidity = safe_float(row.get("average-soil-relative-humidity"))
+        vegetation = (row.get("vegetation") or "").strip().lower()
+        has_metadata = math.isfinite(humidity) and vegetation in {"yes", "no"}
+        total = float(raw_sample_totals[sample_pos])
+        if total < 100:
+            if total == 0:
+                dropped_zero_reads += 1
+            else:
+                dropped_low_reads_nonzero += 1
+            continue
+        if not has_metadata:
+            dropped_missing_metadata += 1
+            continue
+        qc_sample_indices.append(sample_pos)
+
+    sample_ids = [raw_sample_ids[idx] for idx in qc_sample_indices]
+    table = raw_table[:, qc_sample_indices]
     sample_totals = table.sum(axis=0)
     relative = np.divide(table, sample_totals, out=np.zeros_like(table), where=sample_totals > 0) * 100.0
     total_reads = table.sum(axis=1)
@@ -348,16 +397,31 @@ def build_cache() -> CachePaths:
     mean_relative = relative.mean(axis=1)
     max_relative = relative.max(axis=1)
 
-    present_threshold = math.ceil(0.10 * len(sample_ids))
-    eligible_for_q = [idx for idx, value in enumerate(prevalence) if value >= present_threshold]
-    # The 61-sample source table has only nine ASVs present in >=10% of samples.
-    # To keep the BH multiple-testing lesson honest and at the requested scale, use
-    # the top 50 ASVs by prevalence and document that low-prevalence ASVs have lower power.
-    q_indices = sorted(range(len(feature_ids)), key=lambda idx: (-prevalence[idx], -mean_relative[idx], feature_ids[idx]))[:50]
-    top20_indices = list(np.argsort(-mean_relative)[:20])
-    top12_indices = list(np.argsort(-mean_relative)[:12])
-    top8_indices = list(np.argsort(-mean_relative)[:8])
-    union_indices = sorted(set(q_indices) | set(top20_indices) | set(top12_indices) | set(top8_indices), key=lambda idx: (-mean_relative[idx], feature_ids[idx]))
+    if len(sample_ids) != 46:
+        raise ValueError(f"Final brief expects 46 QC-passed samples; found {len(sample_ids)}")
+    if (dropped_zero_reads, dropped_low_reads_nonzero, dropped_missing_metadata) != (5, 7, 3):
+        raise ValueError(
+            "Unexpected sample-QC drop counts: "
+            f"zero={dropped_zero_reads}, low_nonzero={dropped_low_reads_nonzero}, missing_metadata={dropped_missing_metadata}"
+        )
+
+    prevalence_threshold = 3
+    retained_indices = [idx for idx, value in enumerate(prevalence) if value >= prevalence_threshold]
+    if len(retained_indices) != 37:
+        raise ValueError(f"Final brief expects 37 ASVs present in >=3 QC samples; found {len(retained_indices)}")
+
+    # ASV cascade - chosen for readability at each step:
+    #   prevalence >= 3 samples first -> q-value tests (all retained ASVs)
+    #   top 20 by mean relative abundance -> abundance plots (readable bars)
+    #   top 12 by mean relative abundance -> UPGMA tree (readable tip labels)
+    #   top 8  by mean relative abundance -> alignment heatmap (readable bases)
+    # Mean relative abundance is used instead of total reads to avoid deep-sample bias.
+    sorted_retained = sorted(retained_indices, key=lambda idx: (-mean_relative[idx], feature_ids[idx]))
+    q_indices = sorted_retained
+    top20_indices = sorted_retained[:20]
+    top12_indices = sorted_retained[:12]
+    top8_indices = sorted_retained[:8]
+    union_indices = sorted_retained
 
     label_by_feature = {feature_ids[idx]: f"Atacama_ASV_{rank:02d}" for rank, idx in enumerate(union_indices, start=1)}
     feature_by_label = {label: feature_id for feature_id, label in label_by_feature.items()}
@@ -375,6 +439,7 @@ def build_cache() -> CachePaths:
                 "average_soil_relative_humidity": row["average-soil-relative-humidity"],
                 "vegetation": row["vegetation"],
                 "percentcover": row["percentcover"],
+                "total_reads": int(sample_totals[len(metadata_rows)]),
             }
         )
 
@@ -391,6 +456,7 @@ def build_cache() -> CachePaths:
             "average_soil_relative_humidity",
             "vegetation",
             "percentcover",
+            "total_reads",
         ],
     )
 
@@ -402,8 +468,8 @@ def build_cache() -> CachePaths:
             row[label_by_feature[feature_ids[idx]]] = int(table[idx, sample_pos])
         row["total_reads"] = int(sample_totals[sample_pos])
         q_rows.append(row)
-    counts_top50_path = CACHE_DIR / f"{PREFIX}_counts_top50.csv"
-    write_csv(counts_top50_path, q_rows, ["sample_id", *q_columns, "total_reads"])
+    counts_retained_path = CACHE_DIR / f"{PREFIX}_counts_retained_asvs.csv"
+    write_csv(counts_retained_path, q_rows, ["sample_id", *q_columns, "total_reads"])
 
     top20_labels = [label_by_feature[feature_ids[idx]] for idx in top20_indices]
     relative_rows: list[dict[str, object]] = []
@@ -448,9 +514,11 @@ def build_cache() -> CachePaths:
             feature_id,
             {
                 "phylum": "Unassigned",
+                "class": "",
+                "order": "",
                 "family": "",
                 "genus": "",
-                "closest_taxonomic_match": "Unassigned at genus level",
+                "closest_taxonomic_match": "Unassigned",
             },
         )
         feature_rows.append(
@@ -462,11 +530,13 @@ def build_cache() -> CachePaths:
                 "mean_relative_abundance_percent": format_float(mean_relative[idx]),
                 "max_relative_abundance_percent": format_float(max_relative[idx]),
                 "sequence_length": len(sequences_by_feature.get(feature_id, "")),
-                "closest_taxonomic_match": tax["closest_taxonomic_match"] or "Unassigned at genus level",
+                "closest_taxonomic_match": tax["closest_taxonomic_match"] or "Unassigned",
                 "phylum": tax["phylum"] or "Unassigned",
+                "class": tax.get("class", ""),
+                "order": tax.get("order", ""),
                 "family": tax["family"],
                 "genus": tax["genus"],
-                "in_q_value_top50": feature_id in q_feature_set,
+                "in_q_value_tests": feature_id in q_feature_set,
                 "in_abundance_top20": feature_id in top20_set,
                 "in_tree_top12": feature_id in top12_set,
                 "in_alignment_top8": feature_id in top8_set,
@@ -486,16 +556,18 @@ def build_cache() -> CachePaths:
             "sequence_length",
             "closest_taxonomic_match",
             "phylum",
+            "class",
+            "order",
             "family",
             "genus",
-            "in_q_value_top50",
+            "in_q_value_tests",
             "in_abundance_top20",
             "in_tree_top12",
             "in_alignment_top8",
         ],
     )
 
-    sequences_path = CACHE_DIR / f"{PREFIX}_rep_seqs_top50_union.fasta"
+    sequences_path = CACHE_DIR / f"{PREFIX}_rep_seqs_retained_asvs.fasta"
     with sequences_path.open("w", encoding="utf-8", newline="\n") as handle:
         for label, feature_id in sorted(feature_by_label.items()):
             sequence = sequences_by_feature.get(feature_id, "")
@@ -514,18 +586,26 @@ def build_cache() -> CachePaths:
         "source_resolution": source_resolution,
         "data_mode": "real_qiime2_artifacts_only_no_synthetic_counts",
         "taxonomy_note": taxonomy_note,
+        "qiime2_version": "Amplicon 2024.10.1",
+        "classifier": "SILVA 138 99% OTUs full-length Naive Bayes classifier",
+        "classifier_sha256": "c08a1aa4d56b449b511f7215543a43249ae9c54b57491428a7e5548a62613616",
+        "raw_sample_count": len(raw_sample_ids),
         "sample_count": len(sample_ids),
+        "samples_dropped_by_qc": len(raw_sample_ids) - len(sample_ids),
+        "samples_dropped_zero_reads": dropped_zero_reads,
+        "samples_dropped_low_reads_nonzero": dropped_low_reads_nonzero,
+        "samples_dropped_missing_metadata": dropped_missing_metadata,
         "feature_count_full_table": len(feature_ids),
-        "present_threshold_samples": present_threshold,
-        "asvs_at_or_above_10_percent_prevalence": len(eligible_for_q),
+        "prevalence_filter_samples": prevalence_threshold,
+        "retained_asvs": len(retained_indices),
         "q_value_asvs": len(q_indices),
         "abundance_asvs": len(top20_indices),
         "tree_asvs": len(top12_indices),
         "alignment_asvs": len(top8_indices),
-        "scientific_note": "Taxonomy labels come from a real QIIME/SILVA taxonomy artifact when available, with the nearest-reference cache used only as a fallback. Labels are closest matches, not species proof.",
+        "scientific_note": "Taxonomy labels come from a real QIIME/SILVA taxonomy artifact when available. Labels are closest taxonomic matches, not species proof.",
     }
     manifest_path = CACHE_DIR / f"{PREFIX}_manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8", newline="\n")
 
     readme_path = CACHE_DIR / "ATACAMA_GOAL2_README.md"
     readme_path.write_text(
@@ -534,7 +614,7 @@ def build_cache() -> CachePaths:
             # Goal 2 Atacama Soil ASV Cache
 
             This cache supports the Atacama-only student Colab in `soil_microbiome_16s_class_safe_colab.ipynb`.
-            It is derived from QIIME 2 2024.10 Atacama tutorial artifacts and contains no synthetic ASVs.
+            It is derived from real QIIME 2 2024.10 Atacama tutorial artifacts and contains no synthetic ASVs.
 
             Source files used locally:
 
@@ -547,35 +627,39 @@ def build_cache() -> CachePaths:
             non-zip `.qza` placeholders are rejected. If real artifacts cannot be found, the builder
             stops instead of synthesizing counts.
 
-            The notebook uses fixed subsets for readability:
+            The notebook applies sample quality control first:
 
-            - top 50 ASVs by prevalence for association tests
-            - top 20 ASVs by mean relative abundance for abundance plots
-            - top 12 ASVs by mean relative abundance for the UPGMA tree
-            - top 8 ASVs by mean relative abundance for the alignment heatmap
+            - raw output: 401 ASVs across 61 samples
+            - keep samples with at least 100 reads and complete humidity/vegetation metadata: 46 samples
+            - keep ASVs present in at least three QC-passed samples: 37 ASVs
 
-            Prevalence policy: the source artifact has only nine ASVs present in at least 10% of samples,
-            so the notebook uses the top 50 by prevalence for the BH correction lesson and treats the
-            lowest-prevalence ASVs cautiously.
+            The notebook then uses fixed subsets for readability:
+
+            - all 37 retained ASVs for association tests
+            - top 20 retained ASVs by mean relative abundance for abundance plots
+            - top 12 retained ASVs by mean relative abundance for the UPGMA tree
+            - top 8 retained ASVs by mean relative abundance for the alignment heatmap
+
+            Sparseness policy: the 10% tutorial subsample is shallow. The notebook does not hide that;
+            it makes quality control and conservative statistical claims part of the lesson.
 
             Taxonomy policy: the preferred student-facing cache reads
             `goal2_atacama_qiime_taxonomy.tsv`, produced by QIIME 2 `feature-classifier classify-sklearn`
             with the SILVA 138 Naive Bayes classifier. The builder can also read local QIIME taxonomy
-            artifacts from `tmp/atacama_qiime2_source/`. The older
-            `goal2_atacama_silva_static_taxonomy_assignments.csv` nearest-reference cache is kept only as a
-            documented fallback. Taxonomy remains a closest-match label, not species proof.
+            artifacts from `tmp/atacama_qiime2_source/`. Taxonomy remains a closest-match label, not species proof.
             """
         ),
         encoding="utf-8",
+        newline="\n",
     )
 
     return CachePaths(
         metadata=metadata_path,
-        counts_top50=counts_top50_path,
+        counts_retained=counts_retained_path,
         relative_top20=relative_top20_path,
         alpha=alpha_path,
         feature_key=feature_key_path,
-        sequences=sequences_path,
+        sequences_retained=sequences_path,
         manifest=manifest_path,
         readme=readme_path,
     )
@@ -612,6 +696,7 @@ def make_setup_cell(cache_files: dict[str, str]) -> str:
         import pandas as pd
         from IPython.display import HTML, Markdown, display
         from matplotlib import patches
+        from matplotlib.lines import Line2D
         from scipy import stats
         try:
             from statsmodels.stats.multitest import multipletests
@@ -647,7 +732,7 @@ def make_setup_cell(cache_files: dict[str, str]) -> str:
         SAMPLE_COLORS = ["#0072B2", "#E69F00", "#009E73", "#CC79A7", "#56B4E9", "#D55E00", "#F0E442", "#000000"]
 
         plt.rcParams.update({{
-            "figure.dpi": 130,
+            "figure.dpi": 110,
             "savefig.dpi": 180,
             "font.family": "DejaVu Sans",
             "font.size": 10,
@@ -716,6 +801,10 @@ def make_setup_cell(cache_files: dict[str, str]) -> str:
         def short_label(asv):
             return asv.replace("_", " ")
 
+        def asv_tax_label(asv):
+            match = tax_label_lookup.get(asv, "Unassigned")
+            return f"{{short_label(asv)}} ({{match}})"
+
         def sequence_distance(seq_a, seq_b):
             compared = 0
             differences = 0
@@ -727,12 +816,12 @@ def make_setup_cell(cache_files: dict[str, str]) -> str:
             return differences / compared if compared else math.nan
 
         metadata = read_cache_csv("goal2_atacama_sample_metadata.csv")
-        counts_top50 = read_cache_csv("goal2_atacama_counts_top50.csv")
+        counts_retained = read_cache_csv("goal2_atacama_counts_retained_asvs.csv")
         relative_top20 = read_cache_csv("goal2_atacama_relative_abundance_top20.csv")
         alpha_diversity = read_cache_csv("goal2_atacama_alpha_diversity.csv")
         feature_key = read_cache_csv("goal2_atacama_feature_key.csv")
         manifest = json.loads(cache_text("goal2_atacama_manifest.json"))
-        sequences = parse_fasta(cache_text("goal2_atacama_rep_seqs_top50_union.fasta"))
+        sequences = parse_fasta(cache_text("goal2_atacama_rep_seqs_retained_asvs.fasta"))
 
         for col in ["average_soil_relative_humidity", "percentcover"]:
             metadata[col] = pd.to_numeric(metadata[col], errors="coerce")
@@ -743,15 +832,22 @@ def make_setup_cell(cache_files: dict[str, str]) -> str:
         top20_asvs = feature_key.query("in_abundance_top20 == True")["asv"].tolist()
         top12_asvs = feature_key.query("in_tree_top12 == True")["asv"].tolist()
         top8_asvs = feature_key.query("in_alignment_top8 == True")["asv"].tolist()
-        q_asvs = feature_key.query("in_q_value_top50 == True")["asv"].tolist()
+        q_asvs = feature_key.query("in_q_value_tests == True")["asv"].tolist()
+        tax_label_lookup = feature_key.set_index("asv")["closest_taxonomic_match"].to_dict()
+        phylum_lookup = feature_key.set_index("asv")["phylum"].fillna("Unassigned").to_dict()
+        phyla = [p for p in feature_key["phylum"].fillna("Unassigned").unique().tolist()]
+        phylum_color = {{phylum: SAMPLE_COLORS[i % len(SAMPLE_COLORS)] for i, phylum in enumerate(phyla)}}
+        phylum_color["Unassigned"] = "#7F7F7F"
 
         # ASV cascade - chosen for readability at each step:
-        #   top 50 by prevalence  -> q-value tests (statistical power)
-        #   top 20 by mean abundance -> abundance plots (readable bars)
-        #   top 12 by mean abundance -> UPGMA tree (readable tip labels)
-        #   top 8  by mean abundance -> alignment heatmap (readable bases)
-        # The 61-sample source table has fewer than 50 ASVs at >=10% prevalence,
-        # so the q-value section keeps the requested top-50 scale and interprets low-prevalence results cautiously.
+        #   sample QC first: >=100 reads and complete humidity/vegetation metadata
+        #   ASV prevalence filter: present in >=3 QC-passed samples
+        #   all 37 retained ASVs -> q-value tests
+        #   top 20 retained by mean relative abundance -> abundance plots
+        #   top 12 retained by mean relative abundance -> UPGMA tree
+        #   top 8 retained by mean relative abundance -> alignment heatmap
+        # CLR transform later uses a 0.5 pseudo-count before log transform.
+        # Mean relative abundance is used instead of total reads to avoid deep-sample bias.
 
         asv_color = {{asv: SAMPLE_COLORS[i % len(SAMPLE_COLORS)] for i, asv in enumerate(top20_asvs)}}
         asv_color["Other"] = "#BDBDBD"
@@ -876,12 +972,18 @@ def code_cell_rotation_diagram() -> str:
 def code_cell_dataset_summary() -> str:
     return dedent(
         '''
+        humidity_min = metadata["average_soil_relative_humidity"].min()
+        humidity_max = metadata["average_soil_relative_humidity"].max()
+        vegetation_counts = metadata["vegetation"].str.lower().value_counts().to_dict()
+        transects = ", ".join(sorted(metadata["transect_name"].dropna().unique()))
         summary = pd.DataFrame([
-            {"What": "Samples", "Value": f"{len(metadata)}", "Why it matters": "Each row is one soil sample."},
-            {"What": "ASVs available for tests", "Value": f"{len(q_asvs)}", "Why it matters": "Enough ASVs to ask which patterns track humidity or vegetation."},
-            {"What": "Tree ASVs", "Value": f"{len(top12_asvs)}", "Why it matters": "Small enough for readable tip labels."},
-            {"What": "Metadata used", "Value": "humidity, vegetation", "Why it matters": "These describe the soil environment."},
-            {"What": "Taxonomic names", "Value": manifest["taxonomy_note"], "Why it matters": "Names are closest-reference labels, not proof of exact species."},
+            {"Measure": "Samples (post-QC)", "Value": f"{len(metadata)}", "Meaning": "Each row is one usable soil sample."},
+            {"Measure": "Samples dropped by QC", "Value": f"{manifest['samples_dropped_by_qc']} (5 zero reads, 7 more with <100 reads, 3 missing metadata)", "Meaning": "Very shallow or incomplete samples are unreliable for ASV counts."},
+            {"Measure": "ASVs (post-prevalence filter)", "Value": f"{len(q_asvs)}", "Meaning": "These ASVs appeared in at least 3 QC-passed samples."},
+            {"Measure": "Sequencing region", "Value": "16S V4 (~252 bp)", "Meaning": "A short marker region, not a whole genome."},
+            {"Measure": "Humidity range (post-QC)", "Value": f"{humidity_min:.2f}-{humidity_max:.2f}%", "Meaning": "The samples still span dry to very humid soil."},
+            {"Measure": "Vegetation groups", "Value": f"yes={vegetation_counts.get('yes', 0)}, no={vegetation_counts.get('no', 0)}", "Meaning": "Two metadata groups used later for association tests."},
+            {"Measure": "Transects", "Value": transects, "Meaning": "The samples come from both Atacama transects in this tutorial subset."},
         ])
         display(styled_table(summary, width_px=940))
         '''
@@ -937,7 +1039,7 @@ def code_cell_alignment() -> str:
                 color = BASE_COLORS.get(base, "#EEEEEE")
                 ax.add_patch(patches.Rectangle((col_idx, row_idx), 1, 1, facecolor=color, edgecolor="none", alpha=float(alpha_by_column[col_idx])))
 
-        labels = [short_label(asv) for asv in alignment_asvs]
+        labels = [asv_tax_label(asv) for asv in alignment_asvs]
         ax.set_xlim(0, window_width)
         ax.set_ylim(0, len(alignment_asvs))
         ax.set_yticks(np.arange(len(alignment_asvs)) + 0.5)
@@ -951,7 +1053,7 @@ def code_cell_alignment() -> str:
         ax.set_xticklabels(tick_labels)
         ax.tick_params(axis="x", top=False, bottom=True, length=3)
         ax.set_xlabel("aligned marker-window column")
-        ax.set_title("Aligned 16S marker window - variable columns carry the phylogenetic signal.", loc="left")
+        ax.set_title("Aligned 16S marker window — variable columns carry the phylogenetic signal.", loc="left")
         ax.invert_yaxis()
         for spine in ax.spines.values():
             spine.set_visible(False)
@@ -971,13 +1073,14 @@ def code_cell_distance_matrix() -> str:
             for b in distance_asvs:
                 distance_matrix.loc[a, b] = sequence_distance(sequences[a], sequences[b])
 
-        fig, ax = plt.subplots(figsize=(7.2, 6.1))
+        fig, ax = plt.subplots(figsize=(8.6, 6.8))
         shown = distance_matrix.loc[distance_asvs, distance_asvs]
         im = ax.imshow(shown.values, cmap="viridis", vmin=0, vmax=np.nanmax(shown.values))
         ax.set_xticks(range(len(distance_asvs)))
         ax.set_yticks(range(len(distance_asvs)))
-        ax.set_xticklabels([short_label(x).replace("Atacama ", "") for x in distance_asvs], rotation=45, ha="right")
-        ax.set_yticklabels([short_label(x).replace("Atacama ", "") for x in distance_asvs])
+        labels = [asv_tax_label(x).replace("Atacama ", "") for x in distance_asvs]
+        ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=7)
+        ax.set_yticklabels(labels, fontsize=7)
         if len(distance_asvs) <= 12:
             for i in range(len(distance_asvs)):
                 for j in range(len(distance_asvs)):
@@ -1060,16 +1163,15 @@ def code_cell_upgma_tree() -> str:
                 return y_lookup[node.name]
             return (node_y(node.left) + node_y(node.right)) / 2
 
-        tax_lookup = feature_key.set_index("asv")["closest_taxonomic_match"].to_dict()
-        fig_height = max(4.8, 0.48 * len(leaf_order) + 1.5)
-        fig, ax = plt.subplots(figsize=(9.5, fig_height))
+        fig_height = max(5.2, 0.52 * len(leaf_order) + 1.7)
+        fig, ax = plt.subplots(figsize=(14, fig_height))
 
         def draw_upgma(node, x):
             y = node_y(node)
             if node.is_leaf:
-                match = tax_lookup.get(node.name, "Unassigned at genus level")
-                suffix = "unassigned" if match == "Unassigned at genus level" else match
-                ax.text(x + 0.01, y, f"{short_label(node.name)} ({suffix})", va="center", ha="left", fontsize=9)
+                color = phylum_color.get(phylum_lookup.get(node.name, "Unassigned"), "#7F7F7F")
+                ax.scatter([x], [y], s=32, color=color, edgecolor="white", linewidth=0.4, zorder=3)
+                ax.text(x + 0.012, y, asv_tax_label(node.name), va="center", ha="left", fontsize=9)
                 return
             children = [(node.left, node.left_length), (node.right, node.right_length)]
             child_ys = []
@@ -1088,10 +1190,20 @@ def code_cell_upgma_tree() -> str:
         ax.set_xlabel("branch length (sequence-distance units)")
         ax.set_title("UPGMA tree for the top Atacama ASVs.", loc="left")
         clean_axes(ax)
-        ax.margins(x=0.25)
-        ax.set_xlim(left=0)
-        add_caption(fig, "Tips are ASVs. Short paths between tips suggest closer sequence relatedness, not exact species identity.")
-        plt.tight_layout()
+        used_phyla = []
+        for asv in leaf_order:
+            phylum = phylum_lookup.get(asv, "Unassigned")
+            if phylum not in used_phyla:
+                used_phyla.append(phylum)
+        handles = [
+            Line2D([0], [0], marker="o", color="none", markerfacecolor=phylum_color.get(phylum, "#7F7F7F"),
+                   markeredgecolor="white", markersize=7, label=phylum)
+            for phylum in used_phyla
+        ]
+        ax.legend(handles=handles, title="Phylum", bbox_to_anchor=(1.01, 0.5), loc="center left", fontsize=8, title_fontsize=9)
+        ax.set_xlim(0, max(upgma_tree.height * 2.9, upgma_tree.height + 0.08))
+        add_caption(fig, "Tips are ASVs. Short paths between tips suggest closer sequence relatedness in the V4 marker region, not exact species identity.")
+        plt.tight_layout(rect=[0, 0, 0.82, 1])
         plt.show()
         '''
     )
@@ -1108,7 +1220,7 @@ def code_cell_abundance_table() -> str:
                 "closest_taxonomic_match": "Closest taxonomic match",
                 "mean_relative_abundance_percent": "Mean relative abundance (%)",
                 "max_relative_abundance_percent": "Maximum relative abundance (%)",
-                "prevalence_samples": "Samples detected (of 61)",
+                "prevalence_samples": "Samples detected (of 46)",
             })
         )
         abundance_table["Mean relative abundance (%)"] = abundance_table["Mean relative abundance (%)"].round(2)
@@ -1142,7 +1254,11 @@ def code_cell_abundance_plot() -> str:
         ax.text(0, -9, "drier", ha="left", va="top", fontsize=9, color="#4D4D4D")
         ax.text(len(plot_df) - 1, -9, "wetter", ha="right", va="top", fontsize=9, color="#4D4D4D")
         handles, labels = ax.get_legend_handles_labels()
-        ax.legend(handles[:10], labels[:10], bbox_to_anchor=(1.01, 1), loc="upper left", fontsize=8, title="first 10 ASVs")
+        legend_pairs = list(zip(handles[:10], labels[:10]))
+        if "Other" in stack_cols:
+            other_index = stack_cols.index("Other")
+            legend_pairs.append((handles[other_index], "Other"))
+        ax.legend([h for h, _ in legend_pairs], [l for _, l in legend_pairs], bbox_to_anchor=(1.01, 1), loc="upper left", fontsize=8, title="top 10 + Other")
         clean_axes(ax)
         add_caption(fig, "Each vertical bar is one soil sample; color shows which ASVs make up the sample after the top 20 are separated from Other.")
         plt.tight_layout()
@@ -1183,18 +1299,27 @@ def code_cell_alpha_plot() -> str:
         for ax, (metric, label) in zip(axes, metrics):
             x = alpha_plot["average_soil_relative_humidity"].to_numpy(dtype=float)
             y = alpha_plot[metric].to_numpy(dtype=float)
-            ax.scatter(x, y, s=28, color=OKABE_ITO["blue"], alpha=0.78, edgecolor="white", linewidth=0.3)
+            colors = alpha_plot["vegetation"].str.lower().map({"no": OKABE_ITO["orange"], "yes": OKABE_ITO["green"]}).fillna(OKABE_ITO["blue"])
+            ax.scatter(x, y, s=30, color=colors, alpha=0.82, edgecolor="white", linewidth=0.35)
             valid = np.isfinite(x) & np.isfinite(y)
             if valid.sum() >= 3:
                 fit = np.polyfit(x[valid], y[valid], 1)
                 xs = np.linspace(np.nanmin(x), np.nanmax(x), 100)
-                ax.plot(xs, fit[0] * xs + fit[1], color="#666666", lw=1.2, alpha=0.7)
+                ax.plot(xs, fit[0] * xs + fit[1], color="#666666", lw=1.1, ls="--", alpha=0.65)
+                rho, p_value = stats.spearmanr(x[valid], y[valid])
+                ax.text(0.03, 0.95, f"Spearman rho={rho:.2f}\\np={fmt_p(p_value)}", transform=ax.transAxes, ha="left", va="top", fontsize=8, color="#777777")
             ax.set_xlabel("average soil relative humidity (%)")
             ax.set_ylabel(label)
             ax.set_title(label, loc="left")
             clean_axes(ax)
         fig.suptitle("Alpha diversity across the humidity gradient.", x=0.01, ha="left", fontsize=12)
-        add_caption(fig, "Observed ASVs count types; Shannon diversity increases when a sample has many types with more even abundances.")
+        obs_rho, obs_p = stats.spearmanr(alpha_plot["average_soil_relative_humidity"], alpha_plot["observed_asvs"])
+        shan_rho, shan_p = stats.spearmanr(alpha_plot["average_soil_relative_humidity"], alpha_plot["shannon_diversity"])
+        if abs(shan_rho) > abs(obs_rho):
+            caption = f"Shannon diversity shows the clearer humidity pattern here (rho={shan_rho:.2f}, p={fmt_p(shan_p)}); observed ASV richness is noisier (rho={obs_rho:.2f}, p={fmt_p(obs_p)})."
+        else:
+            caption = f"Observed ASV richness shows the clearer humidity pattern here (rho={obs_rho:.2f}, p={fmt_p(obs_p)}); Shannon diversity is rho={shan_rho:.2f}, p={fmt_p(shan_p)}."
+        add_caption(fig, caption)
         plt.tight_layout()
         plt.show()
         '''
@@ -1204,13 +1329,13 @@ def code_cell_alpha_plot() -> str:
 def code_cell_association_plot() -> str:
     return dedent(
         '''
-        count_cols = [col for col in counts_top50.columns if col.startswith("Atacama_ASV_")]
-        q_counts = counts_top50[["sample_id", *count_cols]].merge(metadata[["sample_id", "average_soil_relative_humidity", "vegetation"]], on="sample_id")
+        count_cols = [col for col in counts_retained.columns if col.startswith("Atacama_ASV_")]
+        q_counts = counts_retained[["sample_id", *count_cols]].merge(metadata[["sample_id", "average_soil_relative_humidity", "vegetation"]], on="sample_id")
         raw_counts = q_counts[count_cols].astype(float)
         # CLR uses a 0.5 pseudo-count so zero counts can be logged without creating infinite values.
         logged = np.log(raw_counts + 0.5)
         clr = logged.sub(logged.mean(axis=1), axis=0)
-        sample_totals = counts_top50.set_index("sample_id")["total_reads"].reindex(q_counts["sample_id"]).to_numpy(dtype=float)
+        sample_totals = counts_retained.set_index("sample_id")["total_reads"].reindex(q_counts["sample_id"]).to_numpy(dtype=float)
         rel = raw_counts.div(sample_totals, axis=0) * 100.0
 
         humidity = q_counts["average_soil_relative_humidity"].astype(float)
@@ -1246,20 +1371,21 @@ def code_cell_association_plot() -> str:
         association_results["Significant?"] = np.where(association_results["BH q-value"] < 0.05, "yes", "-")
 
         humidity_results = association_results.query("Variable == 'Humidity'").copy()
-        fig, axes = plt.subplots(1, 2, figsize=(4, 3), sharey=True)
+        fig, axes = plt.subplots(1, 2, figsize=(8, 3.5), sharey=True)
         rng = np.random.default_rng(7)
         for ax, col, title in zip(axes, ["Raw p-value", "BH q-value"], ["Raw p-values", "BH q-values"]):
             y = humidity_results[col].to_numpy(dtype=float)
             x = rng.normal(0, 0.035, size=len(y))
             ax.scatter(x, y, s=18, color=OKABE_ITO["blue"], alpha=0.62, edgecolor="none")
             ax.axhline(0.05, color="#666666", ls="--", lw=1)
+            ax.text(0.17, 0.05, "p or q = 0.05", ha="right", va="bottom", fontsize=8, color="#666666")
             ax.set_xlim(-0.18, 0.18)
             ax.set_xticks([])
             ax.set_title(title, loc="left", fontsize=10)
             clean_axes(ax)
         axes[0].set_ylabel("value")
         fig.suptitle("Raw p-values compared with BH q-values.", x=0.02, ha="left", fontsize=11)
-        add_caption(fig, "Multiple-testing correction is conservative on purpose - it is the cost of asking many questions at once.")
+        add_caption(fig, "Same 37 ASVs, before (left) and after (right) BH correction. Multiple-testing correction is conservative on purpose — it is the cost of asking many questions at once.")
         plt.tight_layout()
         plt.show()
         '''
@@ -1274,36 +1400,33 @@ def code_cell_q_table() -> str:
             subset = association_results.query("Variable == @variable").sort_values("BH q-value").head(10).copy()
             for _, row in subset.iterrows():
                 if variable == "Humidity":
-                    effect_label = f"{row['Effect']:.2f}"
-                    effect_col = "Spearman rho"
-                else:
-                    arrow = "higher with vegetation" if row["Effect"] > 0 else "higher without vegetation"
+                    arrow = "↑ with humidity" if row["Effect"] > 0 else "↓ with humidity"
                     effect_label = f"{row['Effect']:.2f} ({arrow})"
-                    effect_col = "Effect size"
+                else:
+                    arrow = "↑ with vegetation" if row["Effect"] > 0 else "↓ with vegetation"
+                    effect_label = f"{row['Effect']:.2f} ({arrow})"
                 table_rows.append({
-                    "Metadata variable": variable,
+                    "Variable": variable,
                     "ASV": row["ASV"],
                     "Closest taxonomic match": row["closest_taxonomic_match"],
                     "Mean abundance (%)": round(row["Mean abundance (%)"], 2),
-                    "Samples detected (of 61)": int(row["prevalence_samples"]),
-                    "Spearman rho": effect_label if variable == "Humidity" else "",
-                    "Effect size": effect_label if variable == "Vegetation" else "",
+                    "Effect (Spearman rho or log2FC)": effect_label,
                     "Raw p-value": fmt_p(row["Raw p-value"]),
                     "BH q-value": fmt_p(row["BH q-value"]),
-                    "Significant?": row["Significant?"],
+                    "Significant?": "✓" if row["BH q-value"] < 0.05 else "—",
                 })
 
         q_table = pd.DataFrame(table_rows)
 
         def significant_style(row):
-            if row["Significant?"] == "yes":
+            if row["Significant?"] == "✓":
                 return ["border-left: 3px solid #009E73"] + [""] * (len(row) - 1)
             return [""] * len(row)
 
         def sig_color(value):
-            if value == "yes":
+            if value == "✓":
                 return "color: #009E73; font-weight: 700"
-            if value == "-":
+            if value == "—":
                 return "color: #999999"
             return ""
 
@@ -1322,7 +1445,7 @@ def code_cell_q_table() -> str:
             .map(q_background, subset=["BH q-value"])
             .set_table_styles([
                 {"selector": "table", "props": [("border-collapse", "collapse"), ("width", "1080px"), ("font-size", "12px")]},
-                {"selector": "th", "props": [("text-align", "left"), ("border-bottom", "1px solid #999"), ("padding", "6px 7px")]},
+                {"selector": "th", "props": [("text-align", "left"), ("background-color", "#f2f2f2"), ("border-bottom", "1px solid #999"), ("padding", "6px 7px")]},
                 {"selector": "td", "props": [("padding", "6px 7px"), ("border-bottom", "1px solid #e6e6e6")]},
                 {"selector": "tbody tr:nth-child(odd)", "props": [("background-color", "#fafafa")]},
             ])
@@ -1334,31 +1457,29 @@ def code_cell_q_table() -> str:
 def code_cell_lollipop() -> str:
     return dedent(
         '''
-        # The full top-50 test table includes low-prevalence ASVs, but the teaching plot
-        # only labels discoveries that meet the original >=10% prevalence threshold.
-        min_prevalence_for_plot = int(manifest["present_threshold_samples"])
-        significant = association_results.query("`BH q-value` < 0.05 and prevalence_samples >= @min_prevalence_for_plot").copy()
+        significant = association_results.query("`BH q-value` < 0.05").copy()
         panels = ["Humidity", "Vegetation"]
-        fig, axes = plt.subplots(1, 2, figsize=(11, max(3.4, 0.38 * max(1, significant.groupby("Variable").size().max() if not significant.empty else 1) + 1.4)))
+        max_rows = int(significant.groupby("Variable").size().max()) if not significant.empty else 1
+        fig, axes = plt.subplots(1, 2, figsize=(11.5, max(3.6, 0.42 * max(1, max_rows) + 1.5)))
         for ax, variable in zip(axes, panels):
             subset = significant.query("Variable == @variable").copy()
             if subset.empty:
-                ax.text(0.5, 0.5, "No ASVs below q < 0.05", ha="center", va="center", transform=ax.transAxes, color="#666666")
-                ax.set_axis_off()
+                target = "humidity" if variable == "Humidity" else "vegetation"
+                ax.text(0.5, 0.55, f"No ASVs reached q < 0.05\\nfor {target} in the QC'd dataset.", ha="center", va="center", transform=ax.transAxes, color="#666666", fontsize=10)
+                ax.axvline(0, color="#777777", lw=1)
+                ax.set_yticks([])
+                ax.set_xlabel("Spearman rho" if variable == "Humidity" else "log2 fold-change")
+                ax.set_title(variable, loc="left")
+                clean_axes(ax)
                 continue
             subset = subset.sort_values("Effect")
             y = np.arange(len(subset))
-            colors = [OKABE_ITO["blue"] if row["phylum"] in ("", "Unassigned") else OKABE_ITO["green"] for _, row in subset.iterrows()]
+            colors = [phylum_color.get(row["phylum"], OKABE_ITO["blue"]) for _, row in subset.iterrows()]
             sizes = 45 + 18 * np.sqrt(subset["Mean abundance (%)"].clip(lower=0.01))
             ax.axvline(0, color="#777777", lw=1)
             ax.hlines(y, 0, subset["Effect"], color="#777777", lw=1.1)
             ax.scatter(subset["Effect"], y, s=sizes, color=colors, alpha=0.88, edgecolor="white", linewidth=0.4, zorder=3)
-            labels = []
-            for _, row in subset.iterrows():
-                match = row["genus"] if isinstance(row["genus"], str) and row["genus"] else row.get("closest_taxonomic_match", "unassigned")
-                if not isinstance(match, str) or not match:
-                    match = "unassigned"
-                labels.append(f"{short_label(row['ASV'])} ({match})")
+            labels = [asv_tax_label(row["ASV"]) for _, row in subset.iterrows()]
             ax.set_yticks(y)
             ax.set_yticklabels(labels, fontsize=8)
             x_right = max(subset["Effect"].max(), 0) + 0.08
@@ -1368,8 +1489,8 @@ def code_cell_lollipop() -> str:
             ax.set_title(variable, loc="left")
             clean_axes(ax)
             ax.margins(x=0.22)
-        fig.suptitle("ASVs with BH q-values below 0.05 and enough prevalence to interpret.", x=0.01, y=0.98, ha="left", fontsize=12)
-        add_caption(fig, "Each bar is one ASV. Humidity bars to the right increase with wetter soil; vegetation bars to the right are higher with vegetation. Dot size = overall abundance. Only ASVs with BH q < 0.05 and >=10% prevalence shown.")
+        fig.suptitle("ASVs with BH q-values below 0.05.", x=0.01, y=0.98, ha="left", fontsize=12)
+        add_caption(fig, "Each bar is one ASV. Bars to the right are more abundant in higher-humidity (or vegetated) samples; bars to the left, lower-humidity (or non-vegetated). Dot size = overall abundance. Only ASVs with BH q < 0.05 are shown.")
         plt.tight_layout(rect=[0, 0.06, 1, 0.91])
         plt.show()
         '''
@@ -1379,11 +1500,11 @@ def code_cell_lollipop() -> str:
 def build_notebook(cache_paths: CachePaths) -> None:
     cache_files = {
         cache_paths.metadata.name: cache_paths.metadata.read_text(encoding="utf-8"),
-        cache_paths.counts_top50.name: cache_paths.counts_top50.read_text(encoding="utf-8"),
+        cache_paths.counts_retained.name: cache_paths.counts_retained.read_text(encoding="utf-8"),
         cache_paths.relative_top20.name: cache_paths.relative_top20.read_text(encoding="utf-8"),
         cache_paths.alpha.name: cache_paths.alpha.read_text(encoding="utf-8"),
         cache_paths.feature_key.name: cache_paths.feature_key.read_text(encoding="utf-8"),
-        cache_paths.sequences.name: cache_paths.sequences.read_text(encoding="utf-8"),
+        cache_paths.sequences_retained.name: cache_paths.sequences_retained.read_text(encoding="utf-8"),
         cache_paths.manifest.name: cache_paths.manifest.read_text(encoding="utf-8"),
     }
 
@@ -1421,7 +1542,7 @@ def build_notebook(cache_paths: CachePaths) -> None:
                 """
                 ## Section 2: Tree-thinking intro (mammals only)
 
-                A phylogenetic tree is a hypothesis about relatedness. Before looking at microbes, use familiar mammals to practice reading trees: dog, wolf, fox, bear, cat, and lion.
+                A phylogenetic tree is a hypothesis about relatedness. Following Baum, Smith, and Donovan's tree-thinking challenge, we will practice with familiar mammals before looking at microbes: dog, wolf, fox, bear, cat, and lion.
 
                 First question: if the same tree is drawn three ways, do the closest relatives change?
                 """
@@ -1457,7 +1578,15 @@ def build_notebook(cache_paths: CachePaths) -> None:
                 """
                 ## Section 3: Atacama dataset story
 
-                The rest of the notebook uses real 16S amplicon data from the QIIME 2 Atacama soil tutorial and its 2024.10 Atacama teaching artifacts. These are soil samples collected across a humidity and aridity gradient, with metadata recording whether vegetation was present near each sample.
+                The rest of the notebook uses **real QIIME 2 Atacama soil 16S data** from the 10% tutorial subsample: `data.qiime2.org/2024.10/tutorials/atacama-soils/10p/`. Soil was sampled across a humidity and aridity gradient from 22 sites along the Yungay and Baquedano transects, with metadata recording whether vegetation was present near each sample.
+
+                Twelve samples with fewer than 100 reads after DADA2 denoising were excluded - at that depth, individual ASV counts are unreliable. This is standard quality control in microbiome studies. 46 samples remain across the humidity gradient.
+
+                After QC, our humidity gradient is uneven - most surviving samples are from wetter sites, because drier sites yielded too little DNA to sequence reliably. This is the most common kind of sampling bias in extreme-environment microbiology.
+
+                <div style="border:1px solid #d8d8d8; background:#f7f7f7; padding:10px 12px; width:600px; font-size:12px; line-height:1.35; color:#333;">
+                Data source: real QIIME 2 Atacama Soils 10p tutorial subsample (data.qiime2.org/2024.10/tutorials/atacama-soils/). Processed with QIIME 2 Amplicon 2024.10.1, DADA2 denoising, SILVA 138 99% Naive Bayes classifier (sha256 c08a1aa4...62613616). 401 ASVs across 61 samples in the raw output; 37 ASVs across 46 samples after QC.
+                </div>
                 """
             )
         )
@@ -1470,7 +1599,9 @@ def build_notebook(cache_paths: CachePaths) -> None:
 
                 An **ASV** is a precise DNA sequence pattern found after cleaning 16S sequencing reads. An ASV is not automatically a species.
 
-                Keep three ideas separate: **abundance** means how much of an ASV is in a sample; **taxonomic match** means what known group the sequence resembles; **evolutionary relatedness** means how sequences cluster in a tree.
+                Keep three ideas separate: **abundance** means how much of an ASV is in a sample; **taxonomic match** means what known group the sequence resembles in SILVA; **sequence relatedness** means how ASV sequences cluster in a tree.
+
+                Many real environmental ASVs do not have known genus or species labels. You will see "Unassigned" or family-level labels on some tips, and that is normal: much microbial diversity is still unnamed.
                 """
             )
         )
@@ -1479,9 +1610,9 @@ def build_notebook(cache_paths: CachePaths) -> None:
         md(
             dedent(
                 """
-                ## Section 5: Load cached Atacama data
+                ## Section 5: Load data and apply QC
 
-                The notebook starts from prepared Atacama tables so every student sees the same data when pressing Run all. The student-facing summary below shows the scale of the dataset without dumping raw metadata.
+                The notebook starts from real Atacama tables embedded with the notebook so every student sees the same data when pressing Run all. We apply the same QC rules before any tree or statistics: keep samples with enough reads, then keep ASVs seen in at least three usable samples.
                 """
             )
         )
@@ -1491,7 +1622,7 @@ def build_notebook(cache_paths: CachePaths) -> None:
         md(
             dedent(
                 """
-                *The dataset has enough samples to compare dry and wetter soils, but the tree will use a smaller ASV subset so the labels stay readable.*
+                *The dataset is sparse, and that is part of the lesson: QC removes unreliable samples before we make any biological claim.*
                 """
             )
         )
@@ -1544,7 +1675,7 @@ def build_notebook(cache_paths: CachePaths) -> None:
                 """
                 ## Section 8: UPGMA tree (the payoff)
 
-                Tips are ASVs. Branch length shows sequence difference. Branches that meet recently, with a short path between them, suggest closer sequence relatedness, which is our best evidence of evolutionary relatedness here but not proof of exact species identity.
+                Tips are ASVs. Branch length shows sequence difference in this 252-bp V4 region. Branches that meet recently, with a short path between them, suggest closer sequence relatedness - our best evidence of evolutionary relatedness, but not proof of it.
                 """
             )
         )
@@ -1598,7 +1729,7 @@ def build_notebook(cache_paths: CachePaths) -> None:
         md(
             dedent(
                 """
-                *Use the trend lines as a visual guide, then describe the direction carefully: humid samples may be richer or more even, but the plot does not identify exact species.*
+                *Use the trend lines as a visual guide, then describe the direction carefully. Real shallow data can show modest correlations rather than dramatic ones.*
                 """
             )
         )
@@ -1609,7 +1740,7 @@ def build_notebook(cache_paths: CachePaths) -> None:
                 """
                 ## Section 11: BH-corrected association tests
 
-                We tested 50 ASVs to see if abundance changes with humidity. With a p < 0.05 cutoff, we would expect about 50 x 0.05 = 2.5 false positives by random chance alone, even if nothing is truly associated. Benjamini-Hochberg (BH) correction adjusts for this. A q-value of 0.05 means we expect about 5% of discoveries below that threshold to be false alarms.
+                We test 37 ASVs to see if abundance changes with humidity. With a p < 0.05 cutoff, we would expect about 37 × 0.05 ≈ 2 false positives by random chance alone, even if nothing is truly associated. Benjamini-Hochberg (BH) correction adjusts for this. A q-value of 0.05 means we expect about 5% of discoveries below that threshold to be false alarms.
                 """
             )
         )
@@ -1634,26 +1765,44 @@ def build_notebook(cache_paths: CachePaths) -> None:
 
                 Fill in the report using the section numbers named in each question.
 
-                1. Which 3 ASVs are most abundant in your samples? Refer to section 9 table.  
+                1. Which 3 ASVs are most abundant in your samples? Refer to section 9 table.
                    [your answer]
 
-                2. Which ASVs are significantly associated with humidity? Refer to section 11 lollipop.  
+                2. Which ASVs are significantly associated with humidity? Refer to section 11 lollipop.
                    [your answer]
 
-                3. Which ASVs are significantly associated with vegetation? Refer to section 11 lollipop.  
+                3. Which ASVs are significantly associated with vegetation? Refer to section 11 lollipop.
                    [your answer]
 
-                4. What does alpha diversity suggest about humid versus arid samples? Refer to section 10.  
+                4. What does alpha diversity suggest about humid versus arid samples? Refer to section 10.
                    [your answer]
 
-                5. In the UPGMA tree, which ASVs cluster closest together? Refer to section 8.  
+                5. In the UPGMA tree, which ASVs cluster closest together? Refer to section 8.
                    [your answer]
 
-                6. Are closely related ASVs from section 8 also similar in abundance from section 9 or in humidity association from section 11?  
+                6. Are closely related ASVs from section 8 also similar in abundance from section 9 or in humidity association from section 11?
                    [your answer]
 
-                7. Synthesis: An ASV can be (a) very abundant, (b) statistically associated with humidity, and (c) closely related to another ASV in the tree - and these are three different things. Explain in 2-3 sentences why these are three different ideas and why all three matter.  
+                7. Synthesis: An ASV can be (a) very abundant, (b) statistically associated with humidity, and (c) closely related to another ASV in the tree - and these are three different things. Explain in 2-3 sentences why these are three different ideas and why all three matter for understanding the soil microbiome.
                    [your answer]
+                """
+            )
+        )
+    )
+    cells.append(
+        md(
+            dedent(
+                """
+                ## Appendix: Full data provenance
+
+                - Source URL: `data.qiime2.org/2024.10/tutorials/atacama-soils/10p/`
+                - QIIME 2 version: Amplicon 2024.10.1, run in WSL
+                - DADA2 denoising parameters: defaults from the QIIME 2 Atacama tutorial
+                - SILVA classifier: SILVA 138 99% OTUs full-length Naive Bayes classifier, sha256 `c08a1aa4d56b449b511f7215543a43249ae9c54b57491428a7e5548a62613616`
+                - Raw artifact counts: 401 ASVs, 61 samples
+                - After sample QC (`>=100` reads plus complete humidity and vegetation metadata): 46 samples
+                - After ASV prevalence filter (`>=3` samples): 37 ASVs
+                - Study reference: Neilson et al. 2017, mSystems, https://doi.org/10.1128/mSystems.00195-16
                 """
             )
         )
@@ -1662,7 +1811,7 @@ def build_notebook(cache_paths: CachePaths) -> None:
     nb["cells"] = cells
     if not (28 <= len(cells) <= 36):
         raise AssertionError(f"Goal 2 requires 28-36 cells; built {len(cells)}")
-    NOTEBOOK_PATH.write_text(nbf.writes(nb), encoding="utf-8")
+    NOTEBOOK_PATH.write_text(nbf.writes(nb), encoding="utf-8", newline="\n")
 
 
 def main() -> None:

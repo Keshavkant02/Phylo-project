@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parent
 CACHE_DIR = ROOT / "soil_16s_class_cache"
 TMP_DIR = ROOT / "tmp"
 
-QUERY_FASTA = CACHE_DIR / "goal2_atacama_rep_seqs_top50_union.fasta"
+QUERY_FASTA = CACHE_DIR / "goal2_atacama_rep_seqs_retained_asvs.fasta"
 FEATURE_KEY = CACHE_DIR / "goal2_atacama_feature_key.csv"
 OUT_ASSIGNMENTS = CACHE_DIR / "goal2_atacama_silva_static_taxonomy_assignments.csv"
 

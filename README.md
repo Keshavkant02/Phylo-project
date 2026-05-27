@@ -29,12 +29,13 @@ python verify_atacama_soil_asv_phylogeny_colab.py
 
 Latest verification checks:
 
-- 35 notebook cells.
-- 61 samples.
-- 50 ASVs for q-value tests.
+- 36 notebook cells.
+- 46 QC-passed samples from 61 raw feature-table samples.
+- 37 ASVs retained after the present-in-at-least-3-samples prevalence filter.
 - 20 ASVs for relative abundance plots.
 - 12 ASVs for the UPGMA tree.
 - 8 ASVs for the alignment heatmap.
+- 74 association-test rows: 37 ASVs x 2 metadata variables.
 - 9 saved figure outputs for visual QA.
 
 See `ATACAMA_GOAL2_QA_REPORT.md` and `soil_16s_class_cache/README.md` for provenance, cache dimensions, and scientific caveats.

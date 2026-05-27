@@ -1,19 +1,22 @@
 {
-  "samples": 61,
-  "q_value_asvs": 50,
+  "samples": 46,
+  "q_value_asvs": 37,
   "abundance_asvs": 20,
   "tree_asvs": 12,
   "alignment_asvs": 8,
-  "association_rows": 100,
+  "association_rows": 74,
   "association_variables": [
     "Humidity",
     "Vegetation"
   ],
-  "significant_rows": 65,
+  "significant_rows": 11,
   "distance_matrix_shape": [
     12,
     12
   ],
   "tree_newick_endswith_semicolon": true,
-  "taxonomy_note": "Taxonomy loaded from goal2_atacama_qiime_taxonomy.tsv."
+  "taxonomy_note": "Taxonomy loaded from goal2_atacama_qiime_taxonomy.tsv.",
+  "manifest_retained_asvs": 37,
+  "samples_dropped_by_qc": 15,
+  "min_total_reads": 138
 }

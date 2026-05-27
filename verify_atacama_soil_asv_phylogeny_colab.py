@@ -29,6 +29,9 @@ FORBIDDEN = [
     "bootstrap",
     "BLAST-like",
     "toy sample",
+    "top50",
+    "counts_top50",
+    "in_q_value_top50",
 ]
 
 EXPECTED_SECTIONS = [
@@ -36,7 +39,7 @@ EXPECTED_SECTIONS = [
     "Section 2: Tree-thinking intro (mammals only)",
     "Section 3: Atacama dataset story",
     "Section 4: What is an ASV?",
-    "Section 5: Load cached Atacama data",
+    "Section 5: Load data and apply QC",
     "Section 6: Alignment of representative ASV sequences",
     "Section 7: Distance matrix",
     "Section 8: UPGMA tree (the payoff)",
@@ -74,6 +77,13 @@ def verify_static(nb) -> dict[str, object]:
     if "[your answer]" not in markdown_source or markdown_source.count("[your answer]") != 7:
         raise AssertionError("Final report must contain exactly seven [your answer] placeholders")
 
+    if "37 × 0.05 ≈ 2" not in markdown_source:
+        raise AssertionError("Multiple-testing explanation must use 37 × 0.05 ≈ 2")
+    if "401 ASVs across 61 samples in the raw output; 37 ASVs across 46 samples after QC" not in markdown_source:
+        raise AssertionError("Section 3 provenance banner is missing or has the wrong counts")
+    if "Appendix: Full data provenance" not in markdown_source:
+        raise AssertionError("Technical provenance appendix is missing")
+
     if "print(" in code_source:
         raise AssertionError("Student notebook contains print() calls")
 
@@ -102,8 +112,12 @@ runtime_audit = {
     "distance_matrix_shape": list(distance_matrix.shape),
     "tree_newick_endswith_semicolon": bool(tree_newick.endswith(";")),
     "taxonomy_note": manifest["taxonomy_note"],
+    "manifest_retained_asvs": int(manifest["retained_asvs"]),
+    "samples_dropped_by_qc": int(manifest["samples_dropped_by_qc"]),
+    "min_total_reads": int(metadata["total_reads"].min()),
 }
-Path("soil_16s_class_cache/goal2_runtime_audit.json").write_text(json.dumps(runtime_audit, indent=2), encoding="utf-8")
+with Path("soil_16s_class_cache/goal2_runtime_audit.json").open("w", encoding="utf-8", newline="\n") as handle:
+    handle.write(json.dumps(runtime_audit, indent=2) + "\n")
 """
     nb.cells.append(nbformat.v4.new_code_cell(audit_code))
 
@@ -141,6 +155,11 @@ def extract_outputs(nb) -> dict[str, object]:
                     widths = [int(value) for value in re.findall(r"width:\s*(\d+)px", html)]
                     if widths and max(widths) > 1100:
                         raise AssertionError(f"Table width exceeds 1100px: {max(widths)}")
+            text = output.get("text", "")
+            if isinstance(text, list):
+                text = "".join(text)
+            if re.search(r"divide by zero|RuntimeWarning", text, flags=re.IGNORECASE):
+                raise AssertionError(f"Runtime warning leaked into notebook output: {text[:200]}")
 
     if len(figure_files) < 8:
         raise AssertionError(f"Expected at least 8 figure screenshots, found {len(figure_files)}")
@@ -154,13 +173,16 @@ def verify_runtime_audit() -> dict[str, object]:
     path = ROOT / "soil_16s_class_cache" / "goal2_runtime_audit.json"
     audit = json.loads(path.read_text(encoding="utf-8"))
     expected = {
-        "samples": 61,
-        "q_value_asvs": 50,
+        "samples": 46,
+        "q_value_asvs": 37,
         "abundance_asvs": 20,
         "tree_asvs": 12,
         "alignment_asvs": 8,
-        "association_rows": 100,
+        "association_rows": 74,
         "distance_matrix_shape": [12, 12],
+        "manifest_retained_asvs": 37,
+        "samples_dropped_by_qc": 15,
+        "min_total_reads": 138,
     }
     for key, value in expected.items():
         if audit.get(key) != value:
@@ -187,7 +209,7 @@ def main() -> None:
         "runtime": runtime_report,
         "outputs": output_report,
     }
-    AUDIT_PATH.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    AUDIT_PATH.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(json.dumps(report, indent=2))
 
 

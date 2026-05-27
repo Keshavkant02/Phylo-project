@@ -11,12 +11,12 @@ The current student-facing notebook uses real Atacama 16S ASVs only. It does not
 
 ## Goal 2 files
 
-- `goal2_atacama_sample_metadata.csv`: 61 Atacama soil samples with humidity and vegetation metadata.
-- `goal2_atacama_counts_top50.csv`: counts for the top 50 ASVs by prevalence, used for q-value tests.
-- `goal2_atacama_relative_abundance_top20.csv`: top 20 ASVs by mean relative abundance, with remaining ASVs collapsed to `Other`.
-- `goal2_atacama_alpha_diversity.csv`: observed ASVs and Shannon diversity per sample.
-- `goal2_atacama_feature_key.csv`: ASV labels, source feature IDs, abundance ranks, prevalence, and taxonomy fields.
-- `goal2_atacama_rep_seqs_top50_union.fasta`: representative 16S sequences used for alignment, distance, and tree sections.
+- `goal2_atacama_sample_metadata.csv`: 46 QC-passed Atacama soil samples with humidity and vegetation metadata.
+- `goal2_atacama_counts_retained_asvs.csv`: counts for the 37 ASVs present in at least 3 QC-passed samples, used for q-value tests.
+- `goal2_atacama_relative_abundance_top20.csv`: top 20 retained ASVs by mean relative abundance, with remaining ASVs collapsed to `Other`.
+- `goal2_atacama_alpha_diversity.csv`: observed ASVs and Shannon diversity per QC-passed sample.
+- `goal2_atacama_feature_key.csv`: retained ASV labels, source feature IDs, abundance ranks, prevalence, and taxonomy fields.
+- `goal2_atacama_rep_seqs_retained_asvs.fasta`: representative 16S sequences used for alignment, distance, and tree sections.
 - `goal2_atacama_manifest.json`: source and cache-generation metadata.
 - `goal2_verification_report.json`: latest verifier output.
 - `goal2_runtime_audit.json`: runtime dimensions from the executed notebook.
@@ -25,9 +25,10 @@ The current student-facing notebook uses real Atacama 16S ASVs only. It does not
 
 ## Scientific notes
 
-Taxonomy is not inferred. If a valid SILVA taxonomy artifact is not present in the local source directory,
-the notebook displays `Unassigned at genus level`.
+Taxonomic labels come from the QIIME 2 SILVA taxonomy artifact where available. Labels are closest taxonomic
+matches, not species proof. If SILVA does not provide a useful genus label, the notebook displays the most
+specific honest rank available, such as family, order, class, phylum, or `Unassigned`.
 
-The source table has only nine ASVs present in at least 10% of samples. The q-value section tests the requested
-top 50 ASVs by prevalence, and the lollipop plot labels only discoveries that also meet the 10% prevalence
-threshold.
+The raw source table has 401 ASVs across 61 samples. The teaching notebook keeps 46 samples after read-depth
+and metadata QC, then keeps 37 ASVs present in at least three of those samples. The sparseness is intentional:
+it is part of the lesson, not hidden.
